@@ -23,6 +23,7 @@ const menuItems = [
   { title: 'Log Aktivitas', icon: Activity, path: '/activity-log', roles: ['super_admin', 'admin'] },
   { title: 'Backup Data', icon: Database, path: '/backup', roles: ['super_admin', 'admin'] },
   { title: 'Kelola Admin', icon: Shield, path: '/admin-management', roles: ['super_admin'] },
+  { title: 'Install Aplikasi', icon: Download, path: '/install', roles: ['super_admin'] },
   { title: 'Pengaturan', icon: Settings, path: '/settings', roles: ['super_admin'] },
 ] as const;
 

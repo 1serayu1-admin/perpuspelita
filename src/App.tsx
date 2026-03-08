@@ -23,6 +23,8 @@ import Backup from "./pages/Backup";
 import AdminManagement from "./pages/AdminManagement";
 import BorrowRequestPage from "./pages/BorrowRequestPage";
 import ApprovalPage from "./pages/ApprovalPage";
+import InstallApp from "./pages/InstallApp";
+import ApprovalPage from "./pages/ApprovalPage";
 import NotFound from "./pages/NotFound";
 import { ReactNode } from "react";
 
