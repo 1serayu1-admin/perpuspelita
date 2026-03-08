@@ -37,6 +37,7 @@ const Teachers = () => {
   const [membershipTarget, setMembershipTarget] = useState<DbTeacher | null>(null);
   const [memberStart, setMemberStart] = useState<Date>();
   const [memberEnd, setMemberEnd] = useState<Date>();
+  const [csvOpen, setCsvOpen] = useState(false);
 
   const filtered = teachers.filter(t => t.name.toLowerCase().includes(search.toLowerCase()) || t.nip.includes(search));
 
