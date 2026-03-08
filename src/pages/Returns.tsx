@@ -29,7 +29,7 @@ const Returns = () => {
 
     const { error } = await update(id, {
       return_date: now.toISOString().split('T')[0],
-      status: isLate ? 'late' : 'returned',
+      status: 'returned',
     } as any);
 
     if (error) {
