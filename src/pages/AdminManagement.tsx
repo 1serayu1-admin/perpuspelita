@@ -217,7 +217,7 @@ const AdminManagement = () => {
       } else {
         toast.success(`Pengguna ${newUser.name} berhasil dibuat sebagai ${ROLE_LABELS[newUser.role]}`);
         setAddDialog(false);
-        setNewUser({ name: '', email: '', password: '', role: 'admin', schoolId: '' });
+        setNewUser({ name: '', email: '', password: '', role: 'admin', schoolId: '', username: '' });
         await fetchUsers();
       }
     } catch (err: any) {
