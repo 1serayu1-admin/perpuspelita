@@ -13,6 +13,8 @@ const Returns = () => {
   const { user } = useAuth();
   const { data: borrowings, loading, update } = useSchoolData<any>('borrowings');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const perPage = 20;
 
   const borrowed = borrowings.filter((t: any) => t.status === 'borrowed' || t.status === 'late');
   const filtered = borrowed.filter((t: any) =>
@@ -20,7 +22,12 @@ const Returns = () => {
     t.book_title.toLowerCase().includes(search.toLowerCase())
   );
 
+  const totalPages = Math.ceil(filtered.length / perPage);
+  const paginated = filtered.slice((page - 1) * perPage, page * perPage);
+
   const handleReturn = async (id: string, dueDate: string) => {
+    if (!window.confirm('Konfirmasi pengembalian buku ini?')) return;
+
     const now = new Date();
     const due = new Date(dueDate);
     const isLate = now > due;
@@ -37,19 +44,9 @@ const Returns = () => {
       return;
     }
 
-    // Increment book available count
+    // Atomic increment book available count
     if (item?.book_id) {
-      const { data: book } = await (supabase as any)
-        .from('books')
-        .select('available')
-        .eq('id', item.book_id)
-        .maybeSingle();
-      if (book) {
-        await (supabase as any)
-          .from('books')
-          .update({ available: (book.available || 0) + 1 })
-          .eq('id', item.book_id);
-      }
+      await supabase.rpc('increment_book_available', { _book_id: item.book_id });
     }
 
     toast.success(isLate ? 'Buku dikembalikan (terlambat)' : 'Buku berhasil dikembalikan');
@@ -74,7 +71,7 @@ const Returns = () => {
         <div className="search-bar">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari peminjam atau buku..." className="pl-9" />
+            <Input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Cari peminjam atau buku..." className="pl-9" />
           </div>
         </div>
 
@@ -96,12 +93,12 @@ const Returns = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.length === 0 ? (
+                  {paginated.length === 0 ? (
                     <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">
                       <CheckCircle className="w-8 h-8 mx-auto mb-2 text-success" />
                       Semua buku telah dikembalikan
                     </td></tr>
-                  ) : filtered.map((t: any) => (
+                  ) : paginated.map((t: any) => (
                     <tr key={t.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                       <td className="p-3 font-medium text-foreground">{t.borrower_name}</td>
                       <td className="p-3 text-foreground">{t.book_title}</td>
@@ -123,6 +120,16 @@ const Returns = () => {
                 </tbody>
               </table>
             </div>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between p-3 border-t">
+                <p className="text-xs text-muted-foreground">{filtered.length} peminjaman aktif</p>
+                <div className="flex gap-1">
+                  {Array.from({ length: Math.min(totalPages, 10) }, (_, i) => (
+                    <Button key={i} variant={page === i + 1 ? 'default' : 'outline'} size="sm" className="w-8 h-8 p-0" onClick={() => setPage(i + 1)}>{i + 1}</Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

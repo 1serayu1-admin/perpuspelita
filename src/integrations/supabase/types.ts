@@ -592,6 +592,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      decrement_book_available: { Args: { _book_id: string }; Returns: boolean }
       get_email_by_username: { Args: { _username: string }; Returns: string }
       get_user_school_id: { Args: { _user_id: string }; Returns: string }
       has_any_role: {
@@ -608,6 +609,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_book_available: { Args: { _book_id: string }; Returns: boolean }
       is_same_school: {
         Args: { _school_id: string; _user_id: string }
         Returns: boolean
