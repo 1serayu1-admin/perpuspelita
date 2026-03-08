@@ -18,7 +18,7 @@ export function useSchoolData<T extends Record<string, any>>(
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    let query = supabase
+    let query = (supabase as any)
       .from(table)
       .select(options?.select || '*');
 
@@ -46,19 +46,19 @@ export function useSchoolData<T extends Record<string, any>>(
 
   const insert = async (record: Partial<T>) => {
     const payload = schoolId ? { ...record, school_id: schoolId } : record;
-    const { error } = await supabase.from(table).insert(payload as any);
+    const { error } = await (supabase as any).from(table).insert(payload);
     if (!error) await fetchData();
     return { error };
   };
 
   const update = async (id: string, record: Partial<T>) => {
-    const { error } = await supabase.from(table).update(record as any).eq('id', id);
+    const { error } = await (supabase as any).from(table).update(record).eq('id', id);
     if (!error) await fetchData();
     return { error };
   };
 
   const remove = async (id: string) => {
-    const { error } = await supabase.from(table).delete().eq('id', id);
+    const { error } = await (supabase as any).from(table).delete().eq('id', id);
     if (!error) await fetchData();
     return { error };
   };
