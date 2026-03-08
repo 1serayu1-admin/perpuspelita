@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSettings } from '@/contexts/SettingsContext';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -11,6 +12,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const { login } = useAuth();
+  const { settings } = useSettings();
   const navigate = useNavigate();
 
   const handleLogin = (e: React.FormEvent) => {
@@ -34,11 +36,15 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4">
-            <BookOpen className="w-8 h-8 text-primary-foreground" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">Perpustakaan Sekolah</h1>
-          <p className="text-sm text-muted-foreground mt-1">Sistem Manajemen Perpustakaan</p>
+          {settings.logoUrl ? (
+            <img src={settings.logoUrl} alt="Logo" className="w-16 h-16 rounded-2xl object-contain mx-auto mb-4" />
+          ) : (
+            <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4">
+              <BookOpen className="w-8 h-8 text-primary-foreground" />
+            </div>
+          )}
+          <h1 className="text-2xl font-bold text-foreground">{settings.appName || 'Perpustakaan'}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{settings.schoolName || 'Sistem Manajemen Perpustakaan'}</p>
         </div>
 
         <div className="bg-card rounded-2xl shadow-lg border p-6">
