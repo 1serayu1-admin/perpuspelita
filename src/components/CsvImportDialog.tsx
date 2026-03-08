@@ -164,7 +164,7 @@ export function CsvImportDialog({ open, onOpenChange, title, columns, onImport, 
                     {preview.slice(0, 5).map((row, i) => (
                       <tr key={i} className="border-t">
                         {columns.map(c => (
-                          <td key={c.key} className="p-2 text-foreground">{row[c.label.toLowerCase()] || row[c.key] || '-'}</td>
+                          <td key={c.key} className="p-2 text-foreground whitespace-nowrap">{row[c.key] || '-'}</td>
                         ))}
                       </tr>
                     ))}
