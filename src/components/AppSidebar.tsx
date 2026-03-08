@@ -31,7 +31,7 @@ const menuItems = [
 export function AppSidebar() {
   const { user, logout, hasRole } = useAuth();
   const { settings } = useSettings();
-  const { getPendingCount } = useBorrowRequests();
+  const { data: borrowRequests } = useSchoolData<any>('borrow_requests');
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
 
