@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Eye, EyeOff, User, Lock, ArrowRight, Shield, UserCog, GraduationCap, Users, Mail, UserPlus } from 'lucide-react';
+import { BookOpen, Eye, EyeOff, User, Lock, ArrowRight, Shield, UserCog, GraduationCap, Users, Mail } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
