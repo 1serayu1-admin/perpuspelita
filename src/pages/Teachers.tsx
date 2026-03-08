@@ -175,9 +175,9 @@ const Teachers = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.length === 0 ? (
+                  {paginated.length === 0 ? (
                     <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Belum ada data guru.</td></tr>
-                  ) : filtered.map(t => (
+                  ) : paginated.map(t => (
                     <tr key={t.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                       <td className="p-3 font-medium text-foreground">{t.name}</td>
                       <td className="p-3 hidden md:table-cell text-muted-foreground font-mono text-xs">{t.nip}</td>
