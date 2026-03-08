@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { logActivity } from '@/hooks/useActivityLog';
 
 const ApprovalPage = () => {
   const { user } = useAuth();
@@ -37,7 +38,11 @@ const ApprovalPage = () => {
       reviewed_at: new Date().toISOString(),
     } as any);
     if (error) toast.error('Gagal menyetujui: ' + error.message);
-    else toast.success('Pengajuan disetujui!');
+    else {
+      toast.success('Pengajuan disetujui!');
+      const req = requests.find((r: any) => r.id === id);
+      logActivity('Persetujuan Peminjaman', `Pengajuan "${req?.book_title}" oleh ${req?.requester_name} disetujui`, user?.name || '', user?.schoolId);
+    }
   };
 
   const openRejectDialog = (id: string) => {
@@ -55,7 +60,11 @@ const ApprovalPage = () => {
       rejection_reason: rejectionReason || 'Ditolak oleh admin',
     } as any);
     if (error) toast.error('Gagal menolak: ' + error.message);
-    else toast.success('Pengajuan ditolak');
+    else {
+      toast.success('Pengajuan ditolak');
+      const req = requests.find((r: any) => r.id === selectedReqId);
+      logActivity('Penolakan Peminjaman', `Pengajuan "${req?.book_title}" oleh ${req?.requester_name} ditolak`, user?.name || '', user?.schoolId);
+    }
     setRejectDialogOpen(false);
     setSelectedReqId(null);
   };

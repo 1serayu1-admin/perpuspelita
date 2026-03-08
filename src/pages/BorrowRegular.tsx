@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { logActivity } from '@/hooks/useActivityLog';
 
 const BorrowRegular = () => {
   const { user } = useAuth();
@@ -51,7 +52,10 @@ const BorrowRegular = () => {
     } as any);
 
     if (error) toast.error('Gagal mencatat peminjaman: ' + error.message);
-    else toast.success('Peminjaman berhasil dicatat');
+    else {
+      toast.success('Peminjaman berhasil dicatat');
+      logActivity('Peminjaman Reguler', `${teacher?.name} meminjam "${book?.title}" selama ${days} hari`, user?.name || '', user?.schoolId);
+    }
     setSaving(false);
     setDialogOpen(false);
   };

@@ -5,8 +5,11 @@ import { Search, RotateCcw, CheckCircle, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { logActivity } from '@/hooks/useActivityLog';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Returns = () => {
+  const { user } = useAuth();
   const { data: borrowings, loading, update } = useSchoolData<any>('borrowings');
   const [search, setSearch] = useState('');
 
@@ -27,7 +30,11 @@ const Returns = () => {
     } as any);
 
     if (error) toast.error('Gagal memproses pengembalian: ' + error.message);
-    else toast.success('Buku berhasil dikembalikan');
+    else {
+      toast.success('Buku berhasil dikembalikan');
+      const item = borrowings.find((b: any) => b.id === id);
+      logActivity('Pengembalian Buku', `${item?.borrower_name} mengembalikan "${item?.book_title}"${isLate ? ' (terlambat)' : ''}`, user?.name || '', user?.schoolId);
+    }
   };
 
   const statusColor = (s: string) => {
