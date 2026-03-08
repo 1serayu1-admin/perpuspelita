@@ -6,6 +6,7 @@ import { Search, Plus, Edit, Trash2, CreditCard, CalendarDays, Upload } from 'lu
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { CsvImportDialog } from '@/components/CsvImportDialog';
+import { studentSchema } from '@/lib/validation';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
