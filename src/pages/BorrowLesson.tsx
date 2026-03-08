@@ -57,8 +57,16 @@ const BorrowLesson = () => {
       duration,
     } as any);
 
-    if (error) toast.error('Gagal mencatat peminjaman: ' + error.message);
-    else {
+    if (error) {
+      toast.error('Gagal mencatat peminjaman: ' + error.message);
+    } else {
+      // Decrement book available count
+      if (book && book.available > 0) {
+        await (supabase as any)
+          .from('books')
+          .update({ available: book.available - 1 })
+          .eq('id', bookId);
+      }
       toast.success(`Peminjaman dicatat. Batas: ${duration} menit`);
       logActivity('Peminjaman Pelajaran', `${student?.name} meminjam "${book?.title}" selama ${duration} menit (guru: ${teacher?.name})`, user?.name || '', user?.schoolId);
     }
