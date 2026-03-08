@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
 import { useSettings, IpAccessMode } from '@/contexts/SettingsContext';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 const SettingsPage = () => {
-  const { settings, updateSettings } = useSettings();
+  const { settings, updateSettings, loading } = useSettings();
   const [schoolName, setSchoolName] = useState(settings.schoolName);
   const [appName, setAppName] = useState(settings.appName);
   const [logoPreview, setLogoPreview] = useState(settings.logoUrl);
@@ -18,7 +18,21 @@ const SettingsPage = () => {
   const [ipAccessMode, setIpAccessMode] = useState<IpAccessMode>(settings.ipAccessMode);
   const [allowedIps, setAllowedIps] = useState<string[]>(settings.allowedIps);
   const [newIp, setNewIp] = useState('');
+  const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Sync local state when settings load from DB
+  useEffect(() => {
+    if (!loading) {
+      setSchoolName(settings.schoolName);
+      setAppName(settings.appName);
+      setLogoPreview(settings.logoUrl);
+      setMotto(settings.motto);
+      setVisi(settings.visi);
+      setIpAccessMode(settings.ipAccessMode);
+      setAllowedIps(settings.allowedIps);
+    }
+  }, [loading, settings]);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -35,7 +49,6 @@ const SettingsPage = () => {
   const addIp = () => {
     const ip = newIp.trim();
     if (!ip) return;
-    // Basic IP/CIDR validation
     const ipRegex = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/;
     if (!ipRegex.test(ip)) {
       toast.error('Format IP tidak valid. Contoh: 192.168.1.1 atau 192.168.1.0/24');
@@ -54,8 +67,9 @@ const SettingsPage = () => {
     setAllowedIps(prev => prev.filter(i => i !== ip));
   };
 
-  const handleSave = () => {
-    updateSettings({
+  const handleSave = async () => {
+    setSaving(true);
+    await updateSettings({
       schoolName,
       appName,
       logoUrl: logoPreview,
@@ -64,8 +78,19 @@ const SettingsPage = () => {
       ipAccessMode,
       allowedIps,
     });
+    setSaving(false);
     toast.success('Pengaturan berhasil disimpan');
   };
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Memuat pengaturan...</p>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -277,16 +302,15 @@ const SettingsPage = () => {
               <div className="rounded-xl border bg-warning/5 p-3">
                 <p className="text-xs text-warning font-medium mb-1">⚠️ Perhatian</p>
                 <p className="text-xs text-muted-foreground">
-                  Pastikan IP perangkat Anda termasuk dalam daftar agar tidak terkunci dari sistem. 
-                  Mode ini memerlukan backend untuk validasi. Saat ini pengaturan disimpan dan siap diintegrasikan.
+                  Pastikan IP perangkat Anda termasuk dalam daftar agar tidak terkunci dari sistem.
                 </p>
               </div>
             </div>
           )}
         </div>
 
-        <Button onClick={handleSave} variant="gradient" size="lg" className="w-full sm:w-auto">
-          <Save className="w-4 h-4 mr-1" /> Simpan Semua Pengaturan
+        <Button onClick={handleSave} variant="gradient" size="lg" className="w-full sm:w-auto" disabled={saving}>
+          <Save className="w-4 h-4 mr-1" /> {saving ? 'Menyimpan...' : 'Simpan Semua Pengaturan'}
         </Button>
       </div>
     </AppLayout>
