@@ -9,6 +9,7 @@ import { logActivity } from '@/hooks/useActivityLog';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Returns = () => {
+  const { user } = useAuth();
   const { data: borrowings, loading, update } = useSchoolData<any>('borrowings');
   const [search, setSearch] = useState('');
 
