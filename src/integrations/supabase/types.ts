@@ -388,9 +388,11 @@ export type Database = {
       schools: {
         Row: {
           address: string | null
+          allowed_ips: string[]
           created_at: string
           email: string | null
           id: string
+          ip_access_mode: string
           is_active: boolean
           logo_url: string | null
           motto: string | null
@@ -402,9 +404,11 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          allowed_ips?: string[]
           created_at?: string
           email?: string | null
           id?: string
+          ip_access_mode?: string
           is_active?: boolean
           logo_url?: string | null
           motto?: string | null
@@ -416,9 +420,11 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          allowed_ips?: string[]
           created_at?: string
           email?: string | null
           id?: string
+          ip_access_mode?: string
           is_active?: boolean
           logo_url?: string | null
           motto?: string | null

@@ -45,7 +45,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
     const { data, error } = await (supabase as any)
       .from('schools')
-      .select('name, logo_url, motto, vision')
+      .select('name, logo_url, motto, vision, ip_access_mode, allowed_ips')
       .eq('id', user.schoolId)
       .single();
 
@@ -56,6 +56,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         logoUrl: data.logo_url || '',
         motto: data.motto || '',
         visi: data.vision || '',
+        ipAccessMode: (data.ip_access_mode as IpAccessMode) || 'open',
+        allowedIps: data.allowed_ips || [],
       }));
     }
     setLoading(false);
@@ -77,6 +79,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           logo_url: next.logoUrl || null,
           motto: next.motto || null,
           vision: next.visi || null,
+          ip_access_mode: next.ipAccessMode,
+          allowed_ips: next.allowedIps,
         })
         .eq('id', user.schoolId);
     }

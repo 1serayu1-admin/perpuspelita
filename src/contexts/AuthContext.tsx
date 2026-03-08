@@ -5,7 +5,7 @@ import type { Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   signup: (email: string, password: string, name: string) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -81,9 +81,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return !error;
+  const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { success: false, message: error.message };
+
+    // After login, check IP restriction for user's school
+    const profile = await fetchUserProfile(data.user.id);
+    if (profile?.schoolId) {
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-ip`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ school_id: profile.schoolId }),
+          }
+        );
+        const result = await res.json();
+        if (!result.allowed) {
+          await supabase.auth.signOut();
+          return {
+            success: false,
+            message: `Akses ditolak. IP Anda (${result.ip}) tidak diizinkan untuk mengakses sekolah ini.`,
+          };
+        }
+      } catch {
+        // If IP check fails, allow access (fail-open for safety)
+      }
+    }
+
+    return { success: true };
   };
 
   const signup = async (email: string, password: string, name: string): Promise<{ success: boolean; message: string }> => {
