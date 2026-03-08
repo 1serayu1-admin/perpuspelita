@@ -30,7 +30,11 @@ const Returns = () => {
     } as any);
 
     if (error) toast.error('Gagal memproses pengembalian: ' + error.message);
-    else toast.success('Buku berhasil dikembalikan');
+    else {
+      toast.success('Buku berhasil dikembalikan');
+      const item = borrowings.find((b: any) => b.id === id);
+      logActivity('Pengembalian Buku', `${item?.borrower_name} mengembalikan "${item?.book_title}"${isLate ? ' (terlambat)' : ''}`, user?.name || '', user?.schoolId);
+    }
   };
 
   const statusColor = (s: string) => {

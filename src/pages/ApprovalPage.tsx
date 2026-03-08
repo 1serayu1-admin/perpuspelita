@@ -60,7 +60,11 @@ const ApprovalPage = () => {
       rejection_reason: rejectionReason || 'Ditolak oleh admin',
     } as any);
     if (error) toast.error('Gagal menolak: ' + error.message);
-    else toast.success('Pengajuan ditolak');
+    else {
+      toast.success('Pengajuan ditolak');
+      const req = requests.find((r: any) => r.id === selectedReqId);
+      logActivity('Penolakan Peminjaman', `Pengajuan "${req?.book_title}" oleh ${req?.requester_name} ditolak`, user?.name || '', user?.schoolId);
+    }
     setRejectDialogOpen(false);
     setSelectedReqId(null);
   };

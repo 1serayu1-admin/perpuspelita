@@ -52,7 +52,10 @@ const BorrowRegular = () => {
     } as any);
 
     if (error) toast.error('Gagal mencatat peminjaman: ' + error.message);
-    else toast.success('Peminjaman berhasil dicatat');
+    else {
+      toast.success('Peminjaman berhasil dicatat');
+      logActivity('Peminjaman Reguler', `${teacher?.name} meminjam "${book?.title}" selama ${days} hari`, user?.name || '', user?.schoolId);
+    }
     setSaving(false);
     setDialogOpen(false);
   };
