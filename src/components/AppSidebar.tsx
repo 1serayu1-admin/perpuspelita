@@ -36,13 +36,17 @@ export function AppSidebar() {
     )}>
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 h-16 border-b border-sidebar-border">
-        <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center flex-shrink-0">
-          <BookOpen className="w-5 h-5 text-sidebar-primary-foreground" />
-        </div>
+        {settings.logoUrl ? (
+          <img src={settings.logoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-contain flex-shrink-0" />
+        ) : (
+          <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center flex-shrink-0">
+            <BookOpen className="w-5 h-5 text-sidebar-primary-foreground" />
+          </div>
+        )}
         {!collapsed && (
           <div className="animate-fade-in">
-            <h1 className="text-sm font-bold text-sidebar-foreground">Perpustakaan</h1>
-            <p className="text-[10px] text-sidebar-muted">Sistem Manajemen</p>
+            <h1 className="text-sm font-bold text-sidebar-foreground">{settings.appName || 'Perpustakaan'}</h1>
+            <p className="text-[10px] text-sidebar-muted">{settings.schoolName || 'Sistem Manajemen'}</p>
           </div>
         )}
       </div>
