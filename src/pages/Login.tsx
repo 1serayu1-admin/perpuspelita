@@ -10,12 +10,14 @@ import loginBg from '@/assets/login-bg.jpg';
 
 const Login = () => {
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [isSignup, setIsSignup] = useState(false);
+  const [isSuperAdminLogin, setIsSuperAdminLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, signup } = useAuth();
+  const { login, loginWithUsername, signup } = useAuth();
   const { settings } = useSettings();
   const navigate = useNavigate();
 
