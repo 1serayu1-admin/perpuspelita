@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
 import { useSchoolData } from '@/hooks/useSchoolData';
-import { Search, Plus, Edit, Trash2, CreditCard, CalendarDays } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, CreditCard, CalendarDays, Upload } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { CsvImportDialog } from '@/components/CsvImportDialog';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
