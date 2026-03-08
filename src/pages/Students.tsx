@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolData } from '@/hooks/useSchoolData';
-import { Search, Plus, Edit, Trash2, CreditCard, CalendarDays } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, CreditCard, CalendarDays, Upload } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { CsvImportDialog } from '@/components/CsvImportDialog';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
@@ -46,6 +47,7 @@ const Students = () => {
   const [membershipTarget, setMembershipTarget] = useState<DbStudent | null>(null);
   const [memberStart, setMemberStart] = useState<Date>();
   const [memberEnd, setMemberEnd] = useState<Date>();
+  const [csvOpen, setCsvOpen] = useState(false);
   const perPage = 8;
 
   const filtered = students.filter(s => s.name.toLowerCase().includes(search.toLowerCase()) || s.nis.includes(search));
@@ -112,13 +114,36 @@ const Students = () => {
     setMembershipDialogOpen(false);
   };
 
+  const handleCsvImport = async (rows: Record<string, string>[]) => {
+    let success = 0, failed = 0;
+    for (const row of rows) {
+      const name = row['nama'] || row['name'] || '';
+      const nis = row['nis'] || '';
+      const email = row['email'] || '';
+      const className = row['kelas'] || row['class'] || '';
+      const cls = classes.find(c => c.name.toLowerCase() === className.toLowerCase());
+      if (!name) { failed++; continue; }
+      const { error } = await insert({
+        name, nis, email,
+        class_id: cls?.id || null,
+        major: cls?.major || '',
+      });
+      if (error) failed++; else success++;
+    }
+    return { success, failed };
+  };
+
   return (
     <AppLayout>
       <div className="animate-fade-in space-y-4">
         <div className="page-header">
           <h1 className="page-title">Manajemen Siswa</h1>
-          <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditItem(null); }}>
-            <DialogTrigger asChild><Button size="sm" variant="gradient"><Plus className="w-4 h-4 mr-1" /> Tambah Siswa</Button></DialogTrigger>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setCsvOpen(true)}>
+              <Upload className="w-4 h-4 mr-1" /> Import CSV
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditItem(null); }}>
+              <DialogTrigger asChild><Button size="sm" variant="gradient"><Plus className="w-4 h-4 mr-1" /> Tambah Siswa</Button></DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>{editItem ? 'Edit Siswa' : 'Tambah Siswa'}</DialogTitle></DialogHeader>
               <form onSubmit={handleSave} className="space-y-3">
@@ -137,7 +162,8 @@ const Students = () => {
                 <Button type="submit" variant="gradient" className="w-full">Simpan</Button>
               </form>
             </DialogContent>
-          </Dialog>
+           </Dialog>
+          </div>
         </div>
 
         <div className="search-bar">
@@ -282,6 +308,20 @@ const Students = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        <CsvImportDialog
+          open={csvOpen}
+          onOpenChange={setCsvOpen}
+          title="Import Siswa dari CSV"
+          columns={[
+            { key: 'nama', label: 'Nama', required: true },
+            { key: 'nis', label: 'NIS' },
+            { key: 'kelas', label: 'Kelas' },
+            { key: 'email', label: 'Email' },
+          ]}
+          onImport={handleCsvImport}
+          templateFilename="template-siswa.csv"
+        />
       </div>
     </AppLayout>
   );

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
 import { useSchoolData } from '@/hooks/useSchoolData';
-import { Search, Plus, Edit, Trash2, CreditCard, CalendarDays } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, CreditCard, CalendarDays, Upload } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { CsvImportDialog } from '@/components/CsvImportDialog';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
@@ -36,6 +37,7 @@ const Teachers = () => {
   const [membershipTarget, setMembershipTarget] = useState<DbTeacher | null>(null);
   const [memberStart, setMemberStart] = useState<Date>();
   const [memberEnd, setMemberEnd] = useState<Date>();
+  const [csvOpen, setCsvOpen] = useState(false);
 
   const filtered = teachers.filter(t => t.name.toLowerCase().includes(search.toLowerCase()) || t.nip.includes(search));
 
@@ -93,13 +95,31 @@ const Teachers = () => {
     setMembershipDialogOpen(false);
   };
 
+  const handleCsvImport = async (rows: Record<string, string>[]) => {
+    let success = 0, failed = 0;
+    for (const row of rows) {
+      const name = row['nama'] || row['name'] || '';
+      const nip = row['nip'] || '';
+      const subject = row['mata pelajaran'] || row['subject'] || '';
+      const email = row['email'] || '';
+      if (!name) { failed++; continue; }
+      const { error } = await insert({ name, nip, subject, email });
+      if (error) failed++; else success++;
+    }
+    return { success, failed };
+  };
+
   return (
     <AppLayout>
       <div className="animate-fade-in space-y-4">
         <div className="page-header">
           <h1 className="page-title">Manajemen Guru</h1>
-          <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditItem(null); }}>
-            <DialogTrigger asChild><Button size="sm" variant="gradient"><Plus className="w-4 h-4 mr-1" /> Tambah Guru</Button></DialogTrigger>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setCsvOpen(true)}>
+              <Upload className="w-4 h-4 mr-1" /> Import CSV
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditItem(null); }}>
+              <DialogTrigger asChild><Button size="sm" variant="gradient"><Plus className="w-4 h-4 mr-1" /> Tambah Guru</Button></DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>{editItem ? 'Edit Guru' : 'Tambah Guru'}</DialogTitle></DialogHeader>
               <form onSubmit={handleSave} className="space-y-3">
@@ -112,7 +132,8 @@ const Teachers = () => {
                 <Button type="submit" variant="gradient" className="w-full">Simpan</Button>
               </form>
             </DialogContent>
-          </Dialog>
+           </Dialog>
+          </div>
         </div>
 
         <div className="search-bar">
@@ -247,6 +268,20 @@ const Teachers = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        <CsvImportDialog
+          open={csvOpen}
+          onOpenChange={setCsvOpen}
+          title="Import Guru dari CSV"
+          columns={[
+            { key: 'nama', label: 'Nama', required: true },
+            { key: 'nip', label: 'NIP' },
+            { key: 'mata pelajaran', label: 'Mata Pelajaran' },
+            { key: 'email', label: 'Email' },
+          ]}
+          onImport={handleCsvImport}
+          templateFilename="template-guru.csv"
+        />
       </div>
     </AppLayout>
   );
