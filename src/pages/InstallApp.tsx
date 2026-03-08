@@ -232,9 +232,8 @@ const InstallApp = () => {
                     size={280}
                     level="H"
                     includeMargin
-                    bgColor="transparent"
-                    fgColor="currentColor"
-                    className="text-foreground"
+                    bgColor="#ffffff"
+                    fgColor="#000000"
                   />
                   <p className="text-sm text-muted-foreground text-center">{settings.appName || 'Perpustakaan Digital'}</p>
                   <p className="text-xs text-muted-foreground text-center break-all">{window.location.origin}</p>
