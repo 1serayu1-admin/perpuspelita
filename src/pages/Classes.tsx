@@ -45,6 +45,7 @@ const Classes = () => {
   };
 
   const handleDelete = async (id: string) => {
+    if (!window.confirm('Yakin ingin menghapus kelas ini? Tindakan ini tidak dapat dibatalkan.')) return;
     const { error } = await remove(id);
     if (error) toast.error('Gagal menghapus kelas');
     else toast.success('Kelas dihapus');

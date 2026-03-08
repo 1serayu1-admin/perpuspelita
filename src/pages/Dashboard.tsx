@@ -53,7 +53,6 @@ const Dashboard = () => {
       else from += PAGE;
     }
     setRequests(allData);
-    if (data) setRequests(data);
     setRequestsLoading(false);
   }, [user, isAdmin]);
 
