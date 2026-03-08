@@ -36,6 +36,7 @@ const AdminManagement = () => {
       name,
       email,
       role: 'admin',
+      appRole: 'admin',
     };
 
     if (editItem) {

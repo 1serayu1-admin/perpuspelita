@@ -1,10 +1,10 @@
 import { Book, Category, Student, Teacher, SchoolClass, BorrowTransaction, ActivityLog, User } from '@/lib/types';
 
 export const mockUsers: User[] = [
-  { id: 'u1', name: 'Super Admin', email: 'superadmin@sekolah.id', role: 'super_admin' },
-  { id: 'u2', name: 'Ibu Sari', email: 'sari@sekolah.id', role: 'admin' },
-  { id: 'u3', name: 'Pak Budi', email: 'budi@sekolah.id', role: 'guru' },
-  { id: 'u4', name: 'Andi Pratama', email: 'andi@sekolah.id', role: 'siswa' },
+  { id: 'u1', name: 'Super Admin', email: 'superadmin@sekolah.id', role: 'super_admin', appRole: 'global_super_admin' },
+  { id: 'u2', name: 'Ibu Sari', email: 'sari@sekolah.id', role: 'admin', appRole: 'admin' },
+  { id: 'u3', name: 'Pak Budi', email: 'budi@sekolah.id', role: 'guru', appRole: 'guru' },
+  { id: 'u4', name: 'Andi Pratama', email: 'andi@sekolah.id', role: 'siswa', appRole: 'siswa' },
 ];
 
 export const mockCategories: Category[] = [
