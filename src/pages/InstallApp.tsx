@@ -251,7 +251,7 @@ const InstallApp = () => {
                 <p>${settings.schoolName || ''}</p>
                 <div style="margin:24px 0">${document.querySelector('.qr-print-source')?.innerHTML || ''}</div>
                 <p>Scan QR code ini untuk install aplikasi</p>
-                <p style="font-size:12px;color:#999">${window.location.origin}</p>
+                <p style="font-size:12px;color:#999">${window.location.origin}/login</p>
                 </body></html>
               `);
               // Re-render QR in print window
