@@ -47,6 +47,7 @@ const Students = () => {
   const [membershipTarget, setMembershipTarget] = useState<DbStudent | null>(null);
   const [memberStart, setMemberStart] = useState<Date>();
   const [memberEnd, setMemberEnd] = useState<Date>();
+  const [csvOpen, setCsvOpen] = useState(false);
   const perPage = 8;
 
   const filtered = students.filter(s => s.name.toLowerCase().includes(search.toLowerCase()) || s.nis.includes(search));
