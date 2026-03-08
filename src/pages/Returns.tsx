@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { logActivity } from '@/hooks/useActivityLog';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const Returns = () => {
   const { user } = useAuth();
@@ -24,17 +25,35 @@ const Returns = () => {
     const due = new Date(dueDate);
     const isLate = now > due;
 
+    const item = borrowings.find((b: any) => b.id === id);
+
     const { error } = await update(id, {
       return_date: now.toISOString().split('T')[0],
       status: isLate ? 'late' : 'returned',
     } as any);
 
-    if (error) toast.error('Gagal memproses pengembalian: ' + error.message);
-    else {
-      toast.success('Buku berhasil dikembalikan');
-      const item = borrowings.find((b: any) => b.id === id);
-      logActivity('Pengembalian Buku', `${item?.borrower_name} mengembalikan "${item?.book_title}"${isLate ? ' (terlambat)' : ''}`, user?.name || '', user?.schoolId);
+    if (error) {
+      toast.error('Gagal memproses pengembalian: ' + error.message);
+      return;
     }
+
+    // Increment book available count
+    if (item?.book_id) {
+      const { data: book } = await (supabase as any)
+        .from('books')
+        .select('available')
+        .eq('id', item.book_id)
+        .maybeSingle();
+      if (book) {
+        await (supabase as any)
+          .from('books')
+          .update({ available: (book.available || 0) + 1 })
+          .eq('id', item.book_id);
+      }
+    }
+
+    toast.success('Buku berhasil dikembalikan');
+    logActivity('Pengembalian Buku', `${item?.borrower_name} mengembalikan "${item?.book_title}"${isLate ? ' (terlambat)' : ''}`, user?.name || '', user?.schoolId);
   };
 
   const statusColor = (s: string) => {

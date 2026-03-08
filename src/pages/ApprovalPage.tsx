@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolData } from '@/hooks/useSchoolData';
+import { supabase } from '@/integrations/supabase/client';
 import { Search, CheckCircle, XCircle, Clock, Filter, BookOpen, GraduationCap, Users, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -32,17 +33,56 @@ const ApprovalPage = () => {
   const rejectedCount = requests.filter((r: any) => r.status === 'rejected').length;
 
   const handleApprove = async (id: string) => {
+    const req = requests.find((r: any) => r.id === id);
+
     const { error } = await update(id, {
       status: 'approved',
       reviewed_by: user?.name || 'Admin',
       reviewed_at: new Date().toISOString(),
     } as any);
-    if (error) toast.error('Gagal menyetujui: ' + error.message);
-    else {
-      toast.success('Pengajuan disetujui!');
-      const req = requests.find((r: any) => r.id === id);
-      logActivity('Persetujuan Peminjaman', `Pengajuan "${req?.book_title}" oleh ${req?.requester_name} disetujui`, user?.name || '', user?.schoolId);
+    if (error) {
+      toast.error('Gagal menyetujui: ' + error.message);
+      return;
     }
+
+    // Create borrowing record
+    if (req) {
+      const durationDays = req.duration || 7;
+      const due = new Date();
+      due.setDate(due.getDate() + durationDays);
+
+      await (supabase as any).from('borrowings').insert({
+        type: 'regular',
+        borrower_name: req.requester_name,
+        borrower_id: req.requester_id,
+        book_id: req.book_id,
+        book_title: req.book_title,
+        borrow_date: new Date().toISOString().split('T')[0],
+        due_date: due.toISOString().split('T')[0],
+        status: 'borrowed',
+        duration: durationDays,
+        class_name: req.class_name,
+        school_id: req.school_id,
+      });
+
+      // Decrement book available count
+      if (req.book_id) {
+        const { data: book } = await (supabase as any)
+          .from('books')
+          .select('available')
+          .eq('id', req.book_id)
+          .maybeSingle();
+        if (book && book.available > 0) {
+          await (supabase as any)
+            .from('books')
+            .update({ available: book.available - 1 })
+            .eq('id', req.book_id);
+        }
+      }
+    }
+
+    toast.success('Pengajuan disetujui!');
+    logActivity('Persetujuan Peminjaman', `Pengajuan "${req?.book_title}" oleh ${req?.requester_name} disetujui`, user?.name || '', user?.schoolId);
   };
 
   const openRejectDialog = (id: string) => {

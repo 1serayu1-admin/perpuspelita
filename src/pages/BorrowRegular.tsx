@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
 import { useSchoolData } from '@/hooks/useSchoolData';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Search, Plus, BookCopy, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -51,8 +52,16 @@ const BorrowRegular = () => {
       duration: days,
     } as any);
 
-    if (error) toast.error('Gagal mencatat peminjaman: ' + error.message);
-    else {
+    if (error) {
+      toast.error('Gagal mencatat peminjaman: ' + error.message);
+    } else {
+      // Decrement book available count
+      if (book && book.available > 0) {
+        await (supabase as any)
+          .from('books')
+          .update({ available: book.available - 1 })
+          .eq('id', bookId);
+      }
       toast.success('Peminjaman berhasil dicatat');
       logActivity('Peminjaman Reguler', `${teacher?.name} meminjam "${book?.title}" selama ${days} hari`, user?.name || '', user?.schoolId);
     }
