@@ -121,7 +121,7 @@ const BorrowRequestPage = () => {
             <DialogTrigger asChild>
               <Button size="sm" variant="gradient"><Send className="w-4 h-4 mr-1" /> Ajukan Pinjam</Button>
             </DialogTrigger>
-            <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-primary" /> Ajukan Peminjaman Buku
