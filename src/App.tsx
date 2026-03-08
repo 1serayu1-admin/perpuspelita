@@ -83,9 +83,7 @@ const App = () => (
       <BrowserRouter>
         <SettingsProvider>
           <AuthProvider>
-            <BorrowRequestProvider>
-              <AppRoutes />
-            </BorrowRequestProvider>
+            <AppRoutes />
           </AuthProvider>
         </SettingsProvider>
       </BrowserRouter>
