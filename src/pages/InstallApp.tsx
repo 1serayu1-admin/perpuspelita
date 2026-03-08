@@ -3,7 +3,7 @@ import { AppLayout } from '@/layouts/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { Navigate } from 'react-router-dom';
-import { Download, Smartphone, Monitor, CheckCircle, Wifi, WifiOff, Shield, BookOpen, RefreshCw } from 'lucide-react';
+import { Download, Smartphone, Monitor, CheckCircle, Wifi, WifiOff, Shield, BookOpen, RefreshCw, QrCode, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
