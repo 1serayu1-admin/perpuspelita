@@ -184,6 +184,47 @@ const AdminManagement = () => {
     await fetchUsers();
   };
 
+  const handleAddUser = async () => {
+    if (!newUser.name || !newUser.email || !newUser.password) {
+      toast.error('Nama, email, dan password wajib diisi');
+      return;
+    }
+    if (newUser.password.length < 6) {
+      toast.error('Password minimal 6 karakter');
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          email: newUser.email,
+          password: newUser.password,
+          name: newUser.name,
+          role: newUser.role,
+          school_id: newUser.schoolId || null,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        toast.error(result.error || 'Gagal membuat pengguna');
+      } else {
+        toast.success(`Pengguna ${newUser.name} berhasil dibuat sebagai ${ROLE_LABELS[newUser.role]}`);
+        setAddDialog(false);
+        setNewUser({ name: '', email: '', password: '', role: 'admin', schoolId: '' });
+        await fetchUsers();
+      }
+    } catch (err: any) {
+      toast.error('Terjadi kesalahan: ' + err.message);
+    }
+    setSaving(false);
+  };
+
   const getAvailableRoles = (): AppRole[] => {
     if (isGlobalAdmin) return ['global_super_admin', 'school_super_admin', 'admin', 'guru', 'siswa'];
     return ['school_super_admin', 'admin', 'guru', 'siswa'];
