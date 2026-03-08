@@ -36,14 +36,20 @@ const BorrowRegular = () => {
     const book = books.find((b: any) => b.id === bookId);
     const teacher = teachers.find((t: any) => t.id === teacherId);
 
+    if (!teacher?.user_id) {
+      toast.error('Guru ini belum memiliki akun pengguna. Hubungi admin untuk membuat akun terlebih dahulu.');
+      setSaving(false);
+      return;
+    }
+
     const borrowDate = new Date().toISOString().split('T')[0];
     const due = new Date();
     due.setDate(due.getDate() + days);
 
     const { error } = await insert({
       type: 'regular',
-      borrower_name: teacher?.name || '',
-      borrower_id: teacher?.user_id || user?.id,
+      borrower_name: teacher.name,
+      borrower_id: teacher.user_id,
       book_id: bookId,
       book_title: book?.title || '',
       borrow_date: borrowDate,

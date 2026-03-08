@@ -115,11 +115,11 @@ const Login = () => {
           </div>
 
           <div className="flex items-center justify-center gap-6 text-primary-foreground/50 text-xs animate-fade-in" style={{ animationDelay: '0.8s', animationFillMode: 'both' }}>
-            <span className="flex items-center gap-1.5">📚 132 Koleksi</span>
+            <span className="flex items-center gap-1.5">📚 Koleksi Lengkap</span>
             <span className="w-1 h-1 rounded-full bg-primary-foreground/30" />
-            <span className="flex items-center gap-1.5">👥 6 Pengguna</span>
+            <span className="flex items-center gap-1.5">🔒 Akses Aman</span>
             <span className="w-1 h-1 rounded-full bg-primary-foreground/30" />
-            <span className="flex items-center gap-1.5">📖 24 Pinjaman</span>
+            <span className="flex items-center gap-1.5">📖 Pinjam Mudah</span>
           </div>
         </div>
       </div>

@@ -39,13 +39,20 @@ const BorrowLesson = () => {
     const student = students.find((s: any) => s.id === studentId);
     const book = books.find((b: any) => b.id === bookId);
     const teacher = teachers.find((t: any) => t.id === teacherId);
+
+    if (!student?.user_id) {
+      toast.error('Siswa ini belum memiliki akun pengguna. Hubungi admin untuk membuat akun terlebih dahulu.');
+      setSaving(false);
+      return;
+    }
+
     const now = new Date();
     const due = new Date(now.getTime() + duration * 60000);
 
     const { error } = await insert({
       type: 'lesson',
-      borrower_name: student?.name || '',
-      borrower_id: student?.user_id || user?.id,
+      borrower_name: student.name,
+      borrower_id: student.user_id,
       book_id: bookId,
       book_title: book?.title || '',
       borrow_date: now.toISOString().split('T')[0],

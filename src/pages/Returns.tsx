@@ -52,7 +52,7 @@ const Returns = () => {
       }
     }
 
-    toast.success('Buku berhasil dikembalikan');
+    toast.success(isLate ? 'Buku dikembalikan (terlambat)' : 'Buku berhasil dikembalikan');
     logActivity('Pengembalian Buku', `${item?.borrower_name} mengembalikan "${item?.book_title}"${isLate ? ' (terlambat)' : ''}`, user?.name || '', user?.schoolId);
   };
 

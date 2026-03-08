@@ -79,6 +79,7 @@ const Teachers = () => {
   };
 
   const handleDelete = async (id: string) => {
+    if (!window.confirm('Yakin ingin menghapus guru ini? Tindakan ini tidak dapat dibatalkan.')) return;
     const { error } = await remove(id);
     if (error) toast.error('Gagal menghapus guru');
     else toast.success('Guru dihapus');
