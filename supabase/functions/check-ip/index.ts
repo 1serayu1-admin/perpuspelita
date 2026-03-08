@@ -2,7 +2,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 function ipToNumber(ip: string): number {
@@ -16,6 +17,18 @@ function isIpInCidr(ip: string, cidr: string): boolean {
     return (ipToNumber(ip) & mask) === (ipToNumber(network) & mask);
   }
   return ip === cidr;
+}
+
+function isPrivateIp(ip: string): boolean {
+  // Common private/intranet ranges
+  if (ip.startsWith('10.')) return true;
+  if (ip.startsWith('192.168.')) return true;
+  if (ip.startsWith('172.')) {
+    const second = parseInt(ip.split('.')[1], 10);
+    if (second >= 16 && second <= 31) return true;
+  }
+  if (ip === '127.0.0.1' || ip === 'localhost') return true;
+  return false;
 }
 
 Deno.serve(async (req) => {
@@ -76,6 +89,15 @@ Deno.serve(async (req) => {
       );
     }
 
+    // On intranet, x-forwarded-for may show private IPs or be missing.
+    // If we can't determine IP, allow access (fail-open for intranet safety).
+    if (clientIp === 'unknown') {
+      return new Response(
+        JSON.stringify({ allowed: true, ip: clientIp, note: 'IP tidak terdeteksi' }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const isAllowed = allowedIps.some((cidr: string) => isIpInCidr(clientIp, cidr));
 
     return new Response(
@@ -83,9 +105,10 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
+    // On any error (network timeout, etc.), allow access (fail-open)
     return new Response(
       JSON.stringify({ allowed: true, ip: "unknown", error: err.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

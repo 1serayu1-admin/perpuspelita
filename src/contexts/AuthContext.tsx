@@ -99,14 +99,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const profile = await fetchUserProfile(data.user.id);
     if (profile?.schoolId) {
       try {
+        // Add timeout for slow intranet connections (5 seconds)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
         const res = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-ip`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ school_id: profile.schoolId }),
+            signal: controller.signal,
           }
         );
+        clearTimeout(timeoutId);
+
         const result = await res.json();
         if (!result.allowed) {
           await supabase.auth.signOut();
@@ -116,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
         }
       } catch {
-        // If IP check fails, allow access (fail-open for safety)
+        // If IP check fails (timeout, network error), allow access (fail-open for intranet safety)
       }
     }
 

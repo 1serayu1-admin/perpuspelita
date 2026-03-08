@@ -33,7 +33,13 @@ async function fetchAllRows(
 
     const { data, error } = await query;
 
-    if (error || !data) {
+    if (error) {
+      console.warn(`[useSchoolData] Failed to fetch ${table} (range ${from}-${from + PAGE_SIZE - 1}):`, error.message);
+      hasMore = false;
+      break;
+    }
+    
+    if (!data) {
       hasMore = false;
       break;
     }
