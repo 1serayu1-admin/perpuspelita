@@ -200,13 +200,13 @@ const BorrowRequestPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRequests.length === 0 ? (
+                  {paginatedRequests.length === 0 ? (
                     <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">
                       <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-40" />
                       <p className="text-sm">Belum ada pengajuan</p>
                       <p className="text-xs">Klik "Ajukan Pinjam" untuk mulai</p>
                     </td></tr>
-                  ) : filteredRequests.map((r: any) => {
+                  ) : paginatedRequests.map((r: any) => {
                     const config = statusConfig[r.status as keyof typeof statusConfig] || statusConfig.pending;
                     return (
                       <tr key={r.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
@@ -233,6 +233,17 @@ const BorrowRequestPage = () => {
                 </tbody>
               </table>
             </div>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between p-3 border-t">
+                <p className="text-xs text-muted-foreground">{filteredRequests.length} pengajuan</p>
+                <div className="flex gap-1">
+                  {Array.from({ length: Math.min(totalPages, 10) }, (_, i) => (
+                    <Button key={i} variant={page === i + 1 ? 'default' : 'outline'} size="sm" className="w-8 h-8 p-0" onClick={() => setPage(i + 1)}>{i + 1}</Button>
+                  ))}
+                  {totalPages > 10 && <span className="text-xs text-muted-foreground self-center px-1">...</span>}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

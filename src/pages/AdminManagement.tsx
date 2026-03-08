@@ -60,25 +60,40 @@ const AdminManagement = () => {
 
   const isGlobalAdmin = user?.appRole === 'global_super_admin';
 
+  // Helper to fetch all rows with pagination (avoids 1000-row limit)
+  const fetchAllRows = async (table: string, select: string, orderBy = 'created_at') => {
+    const allRows: any[] = [];
+    let from = 0;
+    const PAGE = 1000;
+    let hasMore = true;
+    while (hasMore) {
+      const { data, error } = await (supabase as any)
+        .from(table)
+        .select(select)
+        .order(orderBy, { ascending: false })
+        .range(from, from + PAGE - 1);
+      if (error || !data || data.length === 0) { hasMore = false; break; }
+      allRows.push(...data);
+      if (data.length < PAGE) hasMore = false;
+      else from += PAGE;
+    }
+    return allRows;
+  };
+
   const fetchUsers = useCallback(async () => {
     setLoading(true);
 
-    // Fetch profiles
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('user_id, name, email, avatar_url, school_id')
-      .order('created_at', { ascending: false });
+    // Fetch profiles (paginated to avoid 1000-row limit)
+    const profiles = await fetchAllRows('profiles', 'user_id, name, email, avatar_url, school_id');
 
-    if (profilesError) {
+    if (!profiles) {
       toast.error('Gagal memuat data pengguna');
       setLoading(false);
       return;
     }
 
-    // Fetch roles
-    const { data: roles } = await supabase
-      .from('user_roles')
-      .select('id, user_id, role, school_id');
+    // Fetch roles (paginated)
+    const roles = await fetchAllRows('user_roles', 'id, user_id, role, school_id');
 
     // Fetch schools for name mapping
     const { data: schoolsData } = await supabase

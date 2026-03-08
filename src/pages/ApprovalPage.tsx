@@ -107,6 +107,22 @@ const ApprovalPage = () => {
 
   const handleReject = async () => {
     if (!selectedReqId) return;
+
+    // Re-fetch the request to get latest status (prevent double-reject)
+    const { data: freshReq, error: fetchErr } = await (supabase as any)
+      .from('borrow_requests')
+      .select('*')
+      .eq('id', selectedReqId)
+      .maybeSingle();
+
+    if (fetchErr || !freshReq || freshReq.status !== 'pending') {
+      toast.error('Pengajuan sudah diproses atau tidak ditemukan');
+      await refetch();
+      setRejectDialogOpen(false);
+      setSelectedReqId(null);
+      return;
+    }
+
     const { error } = await update(selectedReqId, {
       status: 'rejected',
       reviewed_by: user?.name || 'Admin',
@@ -116,8 +132,7 @@ const ApprovalPage = () => {
     if (error) toast.error('Gagal menolak: ' + error.message);
     else {
       toast.success('Pengajuan ditolak');
-      const req = requests.find((r: any) => r.id === selectedReqId);
-      logActivity('Penolakan Peminjaman', `Pengajuan "${req?.book_title}" oleh ${req?.requester_name} ditolak`, user?.name || '', user?.schoolId);
+      logActivity('Penolakan Peminjaman', `Pengajuan "${freshReq.book_title}" oleh ${freshReq.requester_name} ditolak`, user?.name || '', user?.schoolId);
     }
     setRejectDialogOpen(false);
     setSelectedReqId(null);
