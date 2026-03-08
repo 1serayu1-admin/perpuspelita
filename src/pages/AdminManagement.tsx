@@ -185,8 +185,17 @@ const AdminManagement = () => {
   };
 
   const handleAddUser = async () => {
-    if (!newUser.name || !newUser.email || !newUser.password) {
-      toast.error('Nama, email, dan password wajib diisi');
+    const isSuperAdminRole = newUser.role === 'global_super_admin';
+    if (!newUser.name || !newUser.password) {
+      toast.error('Nama dan password wajib diisi');
+      return;
+    }
+    if (isSuperAdminRole && !newUser.email) {
+      toast.error('Email wajib diisi untuk Super Admin');
+      return;
+    }
+    if (!newUser.username && !isSuperAdminRole) {
+      toast.error('Username wajib diisi');
       return;
     }
     if (newUser.password.length < 6) {
@@ -426,11 +435,11 @@ const AdminManagement = () => {
               <Input value={newUser.name} onChange={e => setNewUser(p => ({ ...p, name: e.target.value }))} placeholder="Masukkan nama..." />
             </div>
             <div>
-              <Label>Username (untuk login)</Label>
-              <Input value={newUser.username} onChange={e => setNewUser(p => ({ ...p, username: e.target.value.toLowerCase().replace(/\s/g, '') }))} placeholder="contoh: ahmad.siswa" />
+              <Label>Username (untuk login) {newUser.role !== 'global_super_admin' && <span className="text-destructive">*</span>}</Label>
+              <Input value={newUser.username} onChange={e => setNewUser(p => ({ ...p, username: e.target.value.toLowerCase().replace(/\s/g, '') }))} placeholder="contoh: ahmad.admin" />
             </div>
             <div>
-              <Label>Email</Label>
+              <Label>Email {newUser.role === 'global_super_admin' ? <span className="text-destructive">*</span> : <span className="text-muted-foreground text-xs">(opsional)</span>}</Label>
               <Input type="email" value={newUser.email} onChange={e => setNewUser(p => ({ ...p, email: e.target.value }))} placeholder="email@contoh.com" />
             </div>
             <div>
