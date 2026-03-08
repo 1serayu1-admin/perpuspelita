@@ -1,42 +1,130 @@
 import { AppLayout } from '@/layouts/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
-import { useBorrowRequests } from '@/contexts/BorrowRequestContext';
-import { BookOpen, BookCopy, Users, GraduationCap, RotateCcw, ArrowRight, TrendingUp, Send, Clock, CheckCircle } from 'lucide-react';
-import { mockBooks, mockStudents, mockTeachers, mockTransactions, monthlyBorrowData, categoryBorrowData, dailyActivityData } from '@/data/mockData';
+import { useSchoolData } from '@/hooks/useSchoolData';
+import { BookOpen, BookCopy, Users, GraduationCap, RotateCcw, ArrowRight, TrendingUp, Send, Clock, CheckCircle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
+import { useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect, useCallback } from 'react';
 
 const CHART_COLORS = ['hsl(199,100%,36%)', 'hsl(189,100%,42%)', 'hsl(152,60%,40%)', 'hsl(38,92%,50%)', 'hsl(0,72%,51%)'];
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, hasRole } = useAuth();
-  const { requests, getPendingCount } = useBorrowRequests();
   const isAdmin = hasRole(['super_admin', 'admin']);
   const isSiswaOrGuru = hasRole(['siswa', 'guru']);
 
-  const totalBooks = mockBooks.reduce((a, b) => a + b.stock, 0);
-  const availableBooks = mockBooks.reduce((a, b) => a + b.available, 0);
-  const borrowedBooks = totalBooks - availableBooks;
-  const todayTransactions = mockTransactions.filter(t => t.borrowDate === '2024-03-08').length;
+  const { data: books, loading: booksLoading } = useSchoolData<any>('books');
+  const { data: students } = useSchoolData<any>('students');
+  const { data: teachers } = useSchoolData<any>('teachers');
+  const { data: borrowings, loading: borrowingsLoading } = useSchoolData<any>('borrowings');
+  const { data: categories } = useSchoolData<any>('categories');
 
-  const myRequests = requests.filter(r => r.requesterName === user?.name);
-  const myPending = myRequests.filter(r => r.status === 'pending').length;
-  const myApproved = myRequests.filter(r => r.status === 'approved').length;
+  // Borrow requests - different queries for admin vs user
+  const [requests, setRequests] = useState<any[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(true);
+
+  const fetchRequests = useCallback(async () => {
+    if (!user) return;
+    setRequestsLoading(true);
+
+    let query = supabase.from('borrow_requests').select('*').order('created_at', { ascending: false });
+
+    if (!isAdmin) {
+      query = query.eq('requester_id', user.id);
+    } else if (user.schoolId) {
+      query = query.eq('school_id', user.schoolId);
+    }
+
+    const { data } = await query;
+    if (data) setRequests(data);
+    setRequestsLoading(false);
+  }, [user, isAdmin]);
+
+  useEffect(() => { fetchRequests(); }, [fetchRequests]);
+
+  const loading = booksLoading || borrowingsLoading || requestsLoading;
+
+  // Computed stats
+  const totalBooks = useMemo(() => books.reduce((a: number, b: any) => a + (b.stock || 0), 0), [books]);
+  const availableBooks = useMemo(() => books.reduce((a: number, b: any) => a + (b.available || 0), 0), [books]);
+  const borrowedBooks = totalBooks - availableBooks;
+
+  const today = new Date().toISOString().split('T')[0];
+  const todayTransactions = useMemo(() => borrowings.filter((t: any) => t.borrow_date === today).length, [borrowings, today]);
+  const activeBorrowings = useMemo(() => borrowings.filter((t: any) => t.status === 'borrowed').length, [borrowings]);
+
+  const pendingCount = useMemo(() => requests.filter((r: any) => r.status === 'pending').length, [requests]);
+  const myRequests = useMemo(() => {
+    if (isAdmin) return requests;
+    return requests.filter((r: any) => r.requester_id === user?.id);
+  }, [requests, user, isAdmin]);
+  const myPending = myRequests.filter((r: any) => r.status === 'pending').length;
+  const myApproved = myRequests.filter((r: any) => r.status === 'approved').length;
+
+  // Chart data from real borrowings
+  const monthlyBorrowData = useMemo(() => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const counts = new Array(12).fill(0);
+    borrowings.forEach((b: any) => {
+      const d = new Date(b.borrow_date);
+      if (d.getFullYear() === new Date().getFullYear()) {
+        counts[d.getMonth()]++;
+      }
+    });
+    return months.map((m, i) => ({ month: m, count: counts[i] }));
+  }, [borrowings]);
+
+  const categoryBorrowData = useMemo(() => {
+    const catMap = new Map<string, number>();
+    borrowings.forEach((b: any) => {
+      const book = books.find((bk: any) => bk.id === b.book_id);
+      const cat = book ? categories.find((c: any) => c.id === book.category_id) : null;
+      const catName = cat?.name || 'Lainnya';
+      catMap.set(catName, (catMap.get(catName) || 0) + 1);
+    });
+    return Array.from(catMap.entries()).map(([category, count]) => ({ category, count })).slice(0, 5);
+  }, [borrowings, books, categories]);
+
+  const dailyActivityData = useMemo(() => {
+    const days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+    const pinjam = new Array(7).fill(0);
+    const kembali = new Array(7).fill(0);
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay() + 1);
+
+    borrowings.forEach((b: any) => {
+      const bd = new Date(b.borrow_date);
+      if (bd >= weekStart && bd <= now) {
+        const dayIdx = (bd.getDay() + 6) % 7;
+        pinjam[dayIdx]++;
+      }
+      if (b.return_date) {
+        const rd = new Date(b.return_date);
+        if (rd >= weekStart && rd <= now) {
+          const dayIdx = (rd.getDay() + 6) % 7;
+          kembali[dayIdx]++;
+        }
+      }
+    });
+    return days.map((d, i) => ({ day: d, pinjam: pinjam[i], kembali: kembali[i] }));
+  }, [borrowings]);
 
   // Admin stats
   const adminStats = [
     { label: 'Total Buku', value: totalBooks, icon: BookOpen, color: 'text-primary' },
     { label: 'Buku Tersedia', value: availableBooks, icon: BookCopy, color: 'text-success' },
-    { label: 'Buku Dipinjam', value: borrowedBooks, icon: TrendingUp, color: 'text-warning' },
-    { label: 'Jumlah Siswa', value: mockStudents.length, icon: GraduationCap, color: 'text-secondary' },
-    { label: 'Jumlah Guru', value: mockTeachers.length, icon: Users, color: 'text-info' },
+    { label: 'Buku Dipinjam', value: activeBorrowings, icon: TrendingUp, color: 'text-warning' },
+    { label: 'Jumlah Siswa', value: students.length, icon: GraduationCap, color: 'text-secondary' },
+    { label: 'Jumlah Guru', value: teachers.length, icon: Users, color: 'text-info' },
     { label: 'Transaksi Hari Ini', value: todayTransactions, icon: RotateCcw, color: 'text-primary' },
   ];
 
-  // Siswa/Guru stats
   const userStats = [
     { label: 'Buku Tersedia', value: availableBooks, icon: BookOpen, color: 'text-primary' },
     { label: 'Pengajuan Saya', value: myRequests.length, icon: Send, color: 'text-secondary' },
@@ -51,6 +139,16 @@ const Dashboard = () => {
     if (s === 'returned') return 'bg-success/10 text-success border-success/20';
     return 'bg-destructive/10 text-destructive border-destructive/20';
   };
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -68,11 +166,11 @@ const Dashboard = () => {
                 <Button size="sm" onClick={() => navigate('/books')}>
                   <BookOpen className="w-4 h-4 mr-1" /> Tambah Buku
                 </Button>
-                {getPendingCount() > 0 && (
+                {pendingCount > 0 && (
                   <Button size="sm" variant="outline" onClick={() => navigate('/approval')} className="relative">
                     <CheckCircle className="w-4 h-4 mr-1" /> Persetujuan
                     <span className="ml-1 min-w-[18px] h-[18px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
-                      {getPendingCount()}
+                      {pendingCount}
                     </span>
                   </Button>
                 )}
@@ -124,19 +222,23 @@ const Dashboard = () => {
               </div>
               <div className="stat-card">
                 <h3 className="text-sm font-semibold text-foreground mb-4">Kategori Populer</h3>
-                <ResponsiveContainer width="100%" height={250}>
-                  <PieChart>
-                    <Pie data={categoryBorrowData} dataKey="count" nameKey="category" cx="50%" cy="50%" outerRadius={80} label={({ category }) => category}>
-                      {categoryBorrowData.map((_, i) => (<Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                {categoryBorrowData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie data={categoryBorrowData} dataKey="count" nameKey="category" cx="50%" cy="50%" outerRadius={80} label={({ category }) => category}>
+                        {categoryBorrowData.map((_, i) => (<Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[250px] text-muted-foreground text-sm">Belum ada data</div>
+                )}
               </div>
             </div>
 
             <div className="stat-card">
-              <h3 className="text-sm font-semibold text-foreground mb-4">Aktivitas Harian</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-4">Aktivitas Harian (Minggu Ini)</h3>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={dailyActivityData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(210,15%,90%)" />
@@ -169,10 +271,10 @@ const Dashboard = () => {
                   <th className="text-center p-3 font-medium text-muted-foreground">Status</th>
                 </tr></thead>
                 <tbody>
-                  {myRequests.slice(0, 5).map(r => (
+                  {myRequests.slice(0, 5).map((r: any) => (
                     <tr key={r.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
-                      <td className="p-3 font-medium text-foreground">{r.bookTitle}</td>
-                      <td className="p-3 text-muted-foreground">{r.requestDate}</td>
+                      <td className="p-3 font-medium text-foreground">{r.book_title}</td>
+                      <td className="p-3 text-muted-foreground">{r.request_date}</td>
                       <td className="p-3 text-center">
                         <Badge className={`text-xs ${r.status === 'pending' ? 'bg-warning/10 text-warning border-warning/20' : r.status === 'approved' ? 'bg-success/10 text-success border-success/20' : 'bg-destructive/10 text-destructive border-destructive/20'}`}>
                           {r.status === 'pending' ? 'Menunggu' : r.status === 'approved' ? 'Disetujui' : 'Ditolak'}
@@ -186,12 +288,12 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Admin: Recent Activity Table */}
+        {/* Admin: Recent Borrowings */}
         {isAdmin && (
           <div className="data-table-wrapper">
             <div className="p-4 border-b flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">Aktivitas Terbaru</h3>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/activity-log')}>
+              <h3 className="text-sm font-semibold text-foreground">Peminjaman Terbaru</h3>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/borrow-regular')}>
                 Lihat Semua <ArrowRight className="w-3 h-3 ml-1" />
               </Button>
             </div>
@@ -205,12 +307,12 @@ const Dashboard = () => {
                   <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
                 </tr></thead>
                 <tbody>
-                  {mockTransactions.map(t => (
+                  {borrowings.slice(0, 10).map((t: any) => (
                     <tr key={t.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
-                      <td className="p-3 font-medium text-foreground">{t.borrowerName}</td>
-                      <td className="p-3 text-foreground">{t.bookTitle}</td>
+                      <td className="p-3 font-medium text-foreground">{t.borrower_name}</td>
+                      <td className="p-3 text-foreground">{t.book_title}</td>
                       <td className="p-3"><Badge variant="outline" className="text-xs capitalize">{t.type === 'regular' ? 'Reguler' : 'Pelajaran'}</Badge></td>
-                      <td className="p-3 text-muted-foreground">{t.borrowDate}</td>
+                      <td className="p-3 text-muted-foreground">{t.borrow_date}</td>
                       <td className="p-3">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${statusColor(t.status)}`}>
                           {t.status === 'borrowed' ? 'Dipinjam' : t.status === 'returned' ? 'Dikembalikan' : 'Terlambat'}
@@ -218,6 +320,9 @@ const Dashboard = () => {
                       </td>
                     </tr>
                   ))}
+                  {borrowings.length === 0 && (
+                    <tr><td colSpan={5} className="p-8 text-center text-muted-foreground text-sm">Belum ada data peminjaman</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
