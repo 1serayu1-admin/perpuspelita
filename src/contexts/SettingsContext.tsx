@@ -56,6 +56,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         logoUrl: data.logo_url || '',
         motto: data.motto || '',
         visi: data.vision || '',
+        ipAccessMode: (data.ip_access_mode as IpAccessMode) || 'open',
+        allowedIps: data.allowed_ips || [],
       }));
     }
     setLoading(false);
