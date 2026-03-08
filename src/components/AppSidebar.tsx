@@ -9,6 +9,7 @@ import { useState } from 'react';
 
 const menuItems = [
   { title: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['super_admin', 'admin', 'guru', 'siswa'] },
+  { title: 'Kelola Sekolah', icon: Globe, path: '/schools', roles: ['super_admin'] },
   { title: 'Buku', icon: BookOpen, path: '/books', roles: ['super_admin', 'admin', 'guru', 'siswa'] },
   { title: 'Pengajuan Pinjam', icon: Send, path: '/borrow-request', roles: ['siswa', 'guru'] },
   { title: 'Persetujuan', icon: ClipboardCheck, path: '/approval', roles: ['super_admin', 'admin'] },
