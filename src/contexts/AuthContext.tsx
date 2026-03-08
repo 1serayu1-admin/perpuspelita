@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User, Role, AppRole, toLegacyRole } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
 import type { Session } from '@supabase/supabase-js';
+import { checkRateLimit, resetRateLimit } from '@/lib/validation';
 
 interface AuthContextType {
   user: User | null;
