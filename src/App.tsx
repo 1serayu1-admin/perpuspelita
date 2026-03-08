@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { SettingsProvider } from "@/contexts/SettingsContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Books from "./pages/Books";
@@ -16,6 +17,7 @@ import BorrowLesson from "./pages/BorrowLesson";
 import Returns from "./pages/Returns";
 import Reports from "./pages/Reports";
 import ActivityLogPage from "./pages/ActivityLog";
+import SettingsPage from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { ReactNode } from "react";
 
