@@ -1,7 +1,8 @@
 import { NavLink as RouterNavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/contexts/SettingsContext';
-import { BookOpen, LayoutDashboard, Library, Users, GraduationCap, School, BookCopy, RotateCcw, FileBarChart, Activity, FolderTree, ChevronLeft, ChevronRight, LogOut, Settings, Database, Shield } from 'lucide-react';
+import { useBorrowRequests } from '@/contexts/BorrowRequestContext';
+import { BookOpen, LayoutDashboard, Library, Users, GraduationCap, School, BookCopy, RotateCcw, FileBarChart, Activity, FolderTree, ChevronLeft, ChevronRight, LogOut, Settings, Database, Shield, Send, ClipboardCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -9,11 +10,13 @@ import { useState } from 'react';
 const menuItems = [
   { title: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['super_admin', 'admin', 'guru', 'siswa'] },
   { title: 'Buku', icon: BookOpen, path: '/books', roles: ['super_admin', 'admin', 'guru', 'siswa'] },
+  { title: 'Pengajuan Pinjam', icon: Send, path: '/borrow-request', roles: ['siswa', 'guru'] },
+  { title: 'Persetujuan', icon: ClipboardCheck, path: '/approval', roles: ['super_admin', 'admin'] },
   { title: 'Kategori', icon: FolderTree, path: '/categories', roles: ['super_admin', 'admin'] },
   { title: 'Siswa', icon: GraduationCap, path: '/students', roles: ['super_admin', 'admin'] },
   { title: 'Guru', icon: Users, path: '/teachers', roles: ['super_admin', 'admin'] },
   { title: 'Kelas', icon: School, path: '/classes', roles: ['super_admin', 'admin'] },
-  { title: 'Peminjaman Reguler', icon: BookCopy, path: '/borrow-regular', roles: ['super_admin', 'admin', 'guru'] },
+  { title: 'Peminjaman Reguler', icon: BookCopy, path: '/borrow-regular', roles: ['super_admin', 'admin'] },
   { title: 'Peminjaman Pelajaran', icon: Library, path: '/borrow-lesson', roles: ['super_admin', 'admin'] },
   { title: 'Pengembalian', icon: RotateCcw, path: '/returns', roles: ['super_admin', 'admin'] },
   { title: 'Laporan', icon: FileBarChart, path: '/reports', roles: ['super_admin', 'admin'] },
@@ -26,10 +29,12 @@ const menuItems = [
 export function AppSidebar() {
   const { user, logout, hasRole } = useAuth();
   const { settings } = useSettings();
+  const { getPendingCount } = useBorrowRequests();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
 
   const filteredItems = menuItems.filter(item => hasRole(item.roles as any));
+  const pendingCount = getPendingCount();
 
   return (
     <aside className={cn(
@@ -57,19 +62,25 @@ export function AppSidebar() {
       <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
         {filteredItems.map(item => {
           const isActive = location.pathname === item.path;
+          const showBadge = item.path === '/approval' && pendingCount > 0;
           return (
             <RouterNavLink
               key={item.path}
               to={item.path}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative",
                 isActive
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
                   : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
               )}
             >
               <item.icon className="w-5 h-5 flex-shrink-0" />
-              {!collapsed && <span className="animate-fade-in">{item.title}</span>}
+              {!collapsed && <span className="animate-fade-in flex-1">{item.title}</span>}
+              {showBadge && (
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 min-w-[18px] h-[18px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+                  {pendingCount}
+                </span>
+              )}
             </RouterNavLink>
           );
         })}

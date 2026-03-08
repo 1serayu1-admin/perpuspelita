@@ -1,5 +1,7 @@
 import { AppLayout } from '@/layouts/AppLayout';
-import { BookOpen, BookCopy, Users, GraduationCap, RotateCcw, ArrowRight, TrendingUp } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useBorrowRequests } from '@/contexts/BorrowRequestContext';
+import { BookOpen, BookCopy, Users, GraduationCap, RotateCcw, ArrowRight, TrendingUp, Send, Clock, CheckCircle } from 'lucide-react';
 import { mockBooks, mockStudents, mockTeachers, mockTransactions, monthlyBorrowData, categoryBorrowData, dailyActivityData } from '@/data/mockData';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -10,12 +12,22 @@ const CHART_COLORS = ['hsl(199,100%,36%)', 'hsl(189,100%,42%)', 'hsl(152,60%,40%
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { user, hasRole } = useAuth();
+  const { requests, getPendingCount } = useBorrowRequests();
+  const isAdmin = hasRole(['super_admin', 'admin']);
+  const isSiswaOrGuru = hasRole(['siswa', 'guru']);
+
   const totalBooks = mockBooks.reduce((a, b) => a + b.stock, 0);
   const availableBooks = mockBooks.reduce((a, b) => a + b.available, 0);
   const borrowedBooks = totalBooks - availableBooks;
   const todayTransactions = mockTransactions.filter(t => t.borrowDate === '2024-03-08').length;
 
-  const stats = [
+  const myRequests = requests.filter(r => r.requesterName === user?.name);
+  const myPending = myRequests.filter(r => r.status === 'pending').length;
+  const myApproved = myRequests.filter(r => r.status === 'approved').length;
+
+  // Admin stats
+  const adminStats = [
     { label: 'Total Buku', value: totalBooks, icon: BookOpen, color: 'text-primary' },
     { label: 'Buku Tersedia', value: availableBooks, icon: BookCopy, color: 'text-success' },
     { label: 'Buku Dipinjam', value: borrowedBooks, icon: TrendingUp, color: 'text-warning' },
@@ -23,6 +35,16 @@ const Dashboard = () => {
     { label: 'Jumlah Guru', value: mockTeachers.length, icon: Users, color: 'text-info' },
     { label: 'Transaksi Hari Ini', value: todayTransactions, icon: RotateCcw, color: 'text-primary' },
   ];
+
+  // Siswa/Guru stats
+  const userStats = [
+    { label: 'Buku Tersedia', value: availableBooks, icon: BookOpen, color: 'text-primary' },
+    { label: 'Pengajuan Saya', value: myRequests.length, icon: Send, color: 'text-secondary' },
+    { label: 'Menunggu', value: myPending, icon: Clock, color: 'text-warning' },
+    { label: 'Disetujui', value: myApproved, icon: CheckCircle, color: 'text-success' },
+  ];
+
+  const stats = isAdmin ? adminStats : userStats;
 
   const statusColor = (s: string) => {
     if (s === 'borrowed') return 'bg-warning/10 text-warning border-warning/20';
@@ -36,23 +58,43 @@ const Dashboard = () => {
         <div className="page-header">
           <div>
             <h1 className="page-title">Dashboard</h1>
-            <p className="text-sm text-muted-foreground">Selamat datang di Sistem Manajemen Perpustakaan</p>
+            <p className="text-sm text-muted-foreground">
+              {isAdmin ? 'Selamat datang di Sistem Manajemen Perpustakaan' : `Halo, ${user?.name}! Jelajahi dan pinjam buku.`}
+            </p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <Button size="sm" onClick={() => navigate('/books')}>
-              <BookOpen className="w-4 h-4 mr-1" /> Tambah Buku
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => navigate('/borrow-regular')}>
-              <BookCopy className="w-4 h-4 mr-1" /> Peminjaman
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => navigate('/returns')}>
-              <RotateCcw className="w-4 h-4 mr-1" /> Pengembalian
-            </Button>
+            {isAdmin ? (
+              <>
+                <Button size="sm" onClick={() => navigate('/books')}>
+                  <BookOpen className="w-4 h-4 mr-1" /> Tambah Buku
+                </Button>
+                {getPendingCount() > 0 && (
+                  <Button size="sm" variant="outline" onClick={() => navigate('/approval')} className="relative">
+                    <CheckCircle className="w-4 h-4 mr-1" /> Persetujuan
+                    <span className="ml-1 min-w-[18px] h-[18px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+                      {getPendingCount()}
+                    </span>
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" onClick={() => navigate('/returns')}>
+                  <RotateCcw className="w-4 h-4 mr-1" /> Pengembalian
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button size="sm" onClick={() => navigate('/books')}>
+                  <BookOpen className="w-4 h-4 mr-1" /> Katalog Buku
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => navigate('/borrow-request')}>
+                  <Send className="w-4 h-4 mr-1" /> Pengajuan Saya
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className={`grid gap-4 ${isAdmin ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-6' : 'grid-cols-2 md:grid-cols-4'}`}>
           {stats.map(s => (
             <div key={s.label} className="stat-card">
               <div className="flex items-center justify-between mb-2">
@@ -64,89 +106,123 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="stat-card lg:col-span-2">
-            <h3 className="text-sm font-semibold text-foreground mb-4">Peminjaman Buku per Bulan</h3>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={monthlyBorrowData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(210,15%,90%)" />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Bar dataKey="count" fill="hsl(199,100%,36%)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="stat-card">
-            <h3 className="text-sm font-semibold text-foreground mb-4">Kategori Populer</h3>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie data={categoryBorrowData} dataKey="count" nameKey="category" cx="50%" cy="50%" outerRadius={80} label={({ category }) => category}>
-                  {categoryBorrowData.map((_, i) => (
-                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+        {/* Charts - only for admin */}
+        {isAdmin && (
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="stat-card lg:col-span-2">
+                <h3 className="text-sm font-semibold text-foreground mb-4">Peminjaman Buku per Bulan</h3>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={monthlyBorrowData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(210,15%,90%)" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="hsl(199,100%,36%)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="stat-card">
+                <h3 className="text-sm font-semibold text-foreground mb-4">Kategori Populer</h3>
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie data={categoryBorrowData} dataKey="count" nameKey="category" cx="50%" cy="50%" outerRadius={80} label={({ category }) => category}>
+                      {categoryBorrowData.map((_, i) => (<Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <h3 className="text-sm font-semibold text-foreground mb-4">Aktivitas Harian</h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={dailyActivityData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(210,15%,90%)" />
+                  <XAxis dataKey="day" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="pinjam" stroke="hsl(199,100%,36%)" strokeWidth={2} name="Peminjaman" />
+                  <Line type="monotone" dataKey="kembali" stroke="hsl(152,60%,40%)" strokeWidth={2} name="Pengembalian" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </>
+        )}
+
+        {/* Siswa/Guru: recent requests */}
+        {isSiswaOrGuru && myRequests.length > 0 && (
+          <div className="data-table-wrapper">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground">Pengajuan Terbaru</h3>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/borrow-request')}>
+                Lihat Semua <ArrowRight className="w-3 h-3 ml-1" />
+              </Button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead><tr className="border-b bg-muted/30">
+                  <th className="text-left p-3 font-medium text-muted-foreground">Buku</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Tanggal</th>
+                  <th className="text-center p-3 font-medium text-muted-foreground">Status</th>
+                </tr></thead>
+                <tbody>
+                  {myRequests.slice(0, 5).map(r => (
+                    <tr key={r.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="p-3 font-medium text-foreground">{r.bookTitle}</td>
+                      <td className="p-3 text-muted-foreground">{r.requestDate}</td>
+                      <td className="p-3 text-center">
+                        <Badge className={`text-xs ${r.status === 'pending' ? 'bg-warning/10 text-warning border-warning/20' : r.status === 'approved' ? 'bg-success/10 text-success border-success/20' : 'bg-destructive/10 text-destructive border-destructive/20'}`}>
+                          {r.status === 'pending' ? 'Menunggu' : r.status === 'approved' ? 'Disetujui' : 'Ditolak'}
+                        </Badge>
+                      </td>
+                    </tr>
                   ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="stat-card">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Aktivitas Harian</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={dailyActivityData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(210,15%,90%)" />
-              <XAxis dataKey="day" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="pinjam" stroke="hsl(199,100%,36%)" strokeWidth={2} name="Peminjaman" />
-              <Line type="monotone" dataKey="kembali" stroke="hsl(152,60%,40%)" strokeWidth={2} name="Pengembalian" />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Recent Activity Table */}
-        <div className="data-table-wrapper">
-          <div className="p-4 border-b flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground">Aktivitas Terbaru</h3>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/activity-log')}>
-              Lihat Semua <ArrowRight className="w-3 h-3 ml-1" />
-            </Button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/30">
+        {/* Admin: Recent Activity Table */}
+        {isAdmin && (
+          <div className="data-table-wrapper">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground">Aktivitas Terbaru</h3>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/activity-log')}>
+                Lihat Semua <ArrowRight className="w-3 h-3 ml-1" />
+              </Button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead><tr className="border-b bg-muted/30">
                   <th className="text-left p-3 font-medium text-muted-foreground">Peminjam</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">Judul Buku</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">Jenis</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">Tanggal</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mockTransactions.map(t => (
-                  <tr key={t.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
-                    <td className="p-3 font-medium text-foreground">{t.borrowerName}</td>
-                    <td className="p-3 text-foreground">{t.bookTitle}</td>
-                    <td className="p-3">
-                      <Badge variant="outline" className="text-xs capitalize">{t.type === 'regular' ? 'Reguler' : 'Pelajaran'}</Badge>
-                    </td>
-                    <td className="p-3 text-muted-foreground">{t.borrowDate}</td>
-                    <td className="p-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${statusColor(t.status)}`}>
-                        {t.status === 'borrowed' ? 'Dipinjam' : t.status === 'returned' ? 'Dikembalikan' : 'Terlambat'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </tr></thead>
+                <tbody>
+                  {mockTransactions.map(t => (
+                    <tr key={t.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="p-3 font-medium text-foreground">{t.borrowerName}</td>
+                      <td className="p-3 text-foreground">{t.bookTitle}</td>
+                      <td className="p-3"><Badge variant="outline" className="text-xs capitalize">{t.type === 'regular' ? 'Reguler' : 'Pelajaran'}</Badge></td>
+                      <td className="p-3 text-muted-foreground">{t.borrowDate}</td>
+                      <td className="p-3">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${statusColor(t.status)}`}>
+                          {t.status === 'borrowed' ? 'Dipinjam' : t.status === 'returned' ? 'Dikembalikan' : 'Terlambat'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </AppLayout>
   );
