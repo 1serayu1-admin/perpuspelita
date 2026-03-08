@@ -40,7 +40,12 @@ const Teachers = () => {
   const [memberEnd, setMemberEnd] = useState<Date>();
   const [csvOpen, setCsvOpen] = useState(false);
 
+  const [page, setPage] = useState(1);
+  const perPage = 8;
+
   const filtered = teachers.filter(t => t.name.toLowerCase().includes(search.toLowerCase()) || t.nip.includes(search));
+  const totalPages = Math.ceil(filtered.length / perPage);
+  const paginated = filtered.slice((page - 1) * perPage, page * perPage);
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
