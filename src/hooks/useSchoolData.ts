@@ -15,9 +15,18 @@ export function useSchoolData<T extends Record<string, any>>(
   const [loading, setLoading] = useState(true);
 
   const schoolId = user?.schoolId;
+  const isGlobalAdmin = user?.appRole === 'global_super_admin';
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+
+    // Users without a school (and not global admin) should see no data
+    if (!schoolId && !isGlobalAdmin) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+
     let query = (supabase as any)
       .from(table)
       .select(options?.select || '*');
