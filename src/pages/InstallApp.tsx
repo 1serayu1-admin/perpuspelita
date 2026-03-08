@@ -52,7 +52,11 @@ const InstallApp = () => {
       window.removeEventListener('online', onlineHandler);
       window.removeEventListener('offline', offlineHandler);
     };
-  }, []);
+  }, [isSuperAdmin]);
+
+  if (!isSuperAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const handleInstall = async () => {
     if (!deferredPrompt) {
