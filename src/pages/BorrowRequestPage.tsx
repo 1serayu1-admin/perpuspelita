@@ -119,7 +119,7 @@ const BorrowRequestPage = () => {
                     ))}
                   </select>
                 </div>
-                {user?.role === 'guru' && (
+                {user?.appRole === 'guru' && (
                   <div>
                     <label className="text-sm font-medium block mb-1.5">Durasi Pinjam (hari)</label>
                     <select value={duration} onChange={e => setDuration(e.target.value)} className="w-full h-9 rounded-md border bg-background px-3 text-sm">

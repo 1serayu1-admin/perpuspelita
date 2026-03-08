@@ -33,7 +33,26 @@ const ApprovalPage = () => {
   const rejectedCount = requests.filter((r: any) => r.status === 'rejected').length;
 
   const handleApprove = async (id: string) => {
+    if (!window.confirm('Yakin ingin menyetujui pengajuan ini?')) return;
+
     const req = requests.find((r: any) => r.id === id);
+    if (!req || req.status !== 'pending') {
+      toast.error('Pengajuan sudah diproses atau tidak ditemukan');
+      return;
+    }
+
+    // Check book availability first
+    if (req.book_id) {
+      const { data: book } = await (supabase as any)
+        .from('books')
+        .select('available')
+        .eq('id', req.book_id)
+        .maybeSingle();
+      if (!book || book.available <= 0) {
+        toast.error('Stok buku sudah habis, tidak dapat menyetujui');
+        return;
+      }
+    }
 
     const { error } = await update(id, {
       status: 'approved',
@@ -46,38 +65,36 @@ const ApprovalPage = () => {
     }
 
     // Create borrowing record
-    if (req) {
-      const durationDays = req.duration || 7;
-      const due = new Date();
-      due.setDate(due.getDate() + durationDays);
+    const durationDays = req.duration || 7;
+    const due = new Date();
+    due.setDate(due.getDate() + durationDays);
 
-      await (supabase as any).from('borrowings').insert({
-        type: 'regular',
-        borrower_name: req.requester_name,
-        borrower_id: req.requester_id,
-        book_id: req.book_id,
-        book_title: req.book_title,
-        borrow_date: new Date().toISOString().split('T')[0],
-        due_date: due.toISOString().split('T')[0],
-        status: 'borrowed',
-        duration: durationDays,
-        class_name: req.class_name,
-        school_id: req.school_id,
-      });
+    await (supabase as any).from('borrowings').insert({
+      type: 'regular',
+      borrower_name: req.requester_name,
+      borrower_id: req.requester_id,
+      book_id: req.book_id,
+      book_title: req.book_title,
+      borrow_date: new Date().toISOString().split('T')[0],
+      due_date: due.toISOString().split('T')[0],
+      status: 'borrowed',
+      duration: durationDays,
+      class_name: req.class_name,
+      school_id: req.school_id,
+    });
 
-      // Decrement book available count
-      if (req.book_id) {
-        const { data: book } = await (supabase as any)
+    // Decrement book available count
+    if (req.book_id) {
+      const { data: book } = await (supabase as any)
+        .from('books')
+        .select('available')
+        .eq('id', req.book_id)
+        .maybeSingle();
+      if (book && book.available > 0) {
+        await (supabase as any)
           .from('books')
-          .select('available')
-          .eq('id', req.book_id)
-          .maybeSingle();
-        if (book && book.available > 0) {
-          await (supabase as any)
-            .from('books')
-            .update({ available: book.available - 1 })
-            .eq('id', req.book_id);
-        }
+          .update({ available: book.available - 1 })
+          .eq('id', req.book_id);
       }
     }
 
