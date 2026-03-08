@@ -79,6 +79,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           logo_url: next.logoUrl || null,
           motto: next.motto || null,
           vision: next.visi || null,
+          ip_access_mode: next.ipAccessMode,
+          allowed_ips: next.allowedIps,
         })
         .eq('id', user.schoolId);
     }
