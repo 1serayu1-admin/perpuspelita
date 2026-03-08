@@ -124,6 +124,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const loginWithUsername = async (username: string, password: string): Promise<{ success: boolean; message?: string }> => {
+    const rateCheck = checkRateLimit(username.toLowerCase());
+    if (!rateCheck.allowed) {
+      const secs = Math.ceil((rateCheck.remainingMs || 60000) / 1000);
+      return { success: false, message: `Terlalu banyak percobaan login. Coba lagi dalam ${secs} detik.` };
+    }
+
     // Look up email from username
     const { data: email, error: lookupError } = await supabase.rpc('get_email_by_username', { _username: username });
     if (lookupError || !email) {
