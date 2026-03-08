@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import { bookSchema } from '@/lib/validation';
 
 interface DbBook {
   id: string;
@@ -85,6 +86,13 @@ const Books = () => {
       available: parseInt(form.get('available') as string),
       shelf_location: form.get('shelfLocation') as string,
     };
+
+    const result = bookSchema.safeParse(payload);
+    if (!result.success) {
+      const firstError = result.error.errors[0]?.message || 'Data tidak valid';
+      toast.error(firstError);
+      return;
+    }
 
     if (editBook) {
       const { error } = await update(editBook.id, payload);

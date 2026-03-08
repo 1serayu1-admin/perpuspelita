@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User, Role, AppRole, toLegacyRole } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
 import type { Session } from '@supabase/supabase-js';
+import { checkRateLimit, resetRateLimit } from '@/lib/validation';
 
 interface AuthContextType {
   user: User | null;
@@ -83,8 +84,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
+    const rateCheck = checkRateLimit(email.toLowerCase());
+    if (!rateCheck.allowed) {
+      const secs = Math.ceil((rateCheck.remainingMs || 60000) / 1000);
+      return { success: false, message: `Terlalu banyak percobaan login. Coba lagi dalam ${secs} detik.` };
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { success: false, message: error.message };
+
+    resetRateLimit(email.toLowerCase());
 
     // After login, check IP restriction for user's school
     const profile = await fetchUserProfile(data.user.id);
@@ -115,6 +124,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const loginWithUsername = async (username: string, password: string): Promise<{ success: boolean; message?: string }> => {
+    const rateCheck = checkRateLimit(username.toLowerCase());
+    if (!rateCheck.allowed) {
+      const secs = Math.ceil((rateCheck.remainingMs || 60000) / 1000);
+      return { success: false, message: `Terlalu banyak percobaan login. Coba lagi dalam ${secs} detik.` };
+    }
+
     // Look up email from username
     const { data: email, error: lookupError } = await supabase.rpc('get_email_by_username', { _username: username });
     if (lookupError || !email) {

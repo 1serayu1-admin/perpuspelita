@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
 import { useSchoolData } from '@/hooks/useSchoolData';
 import { Search, Plus, Edit, Trash2, CreditCard, CalendarDays, Upload } from 'lucide-react';
+import { teacherSchema } from '@/lib/validation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { CsvImportDialog } from '@/components/CsvImportDialog';
@@ -50,6 +51,13 @@ const Teachers = () => {
       subject: form.get('subject') as string,
       email: form.get('email') as string,
     };
+
+    const result = teacherSchema.safeParse(payload);
+    if (!result.success) {
+      const firstError = result.error.errors[0]?.message || 'Data tidak valid';
+      toast.error(firstError);
+      return;
+    }
 
     if (editItem) {
       const { error } = await update(editItem.id, payload);

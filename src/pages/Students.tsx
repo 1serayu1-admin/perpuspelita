@@ -6,6 +6,7 @@ import { Search, Plus, Edit, Trash2, CreditCard, CalendarDays, Upload } from 'lu
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { CsvImportDialog } from '@/components/CsvImportDialog';
+import { studentSchema } from '@/lib/validation';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
@@ -62,7 +63,7 @@ const Students = () => {
     const form = new FormData(e.currentTarget);
     const classId = form.get('classId') as string;
     const cls = classes.find(c => c.id === classId);
-    const payload = {
+    const raw = {
       name: form.get('name') as string,
       nis: form.get('nis') as string,
       class_id: classId || null,
@@ -70,12 +71,19 @@ const Students = () => {
       email: form.get('email') as string,
     };
 
+    const result = studentSchema.safeParse(raw);
+    if (!result.success) {
+      const firstError = result.error.errors[0]?.message || 'Data tidak valid';
+      toast.error(firstError);
+      return;
+    }
+
     if (editItem) {
-      const { error } = await update(editItem.id, payload);
+      const { error } = await update(editItem.id, raw);
       if (error) toast.error('Gagal memperbarui siswa');
       else toast.success('Data siswa diperbarui');
     } else {
-      const { error } = await insert(payload);
+      const { error } = await insert(raw);
       if (error) toast.error('Gagal menambahkan siswa');
       else toast.success('Siswa ditambahkan');
     }
