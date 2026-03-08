@@ -3,10 +3,12 @@ import { AppLayout } from '@/layouts/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { Navigate } from 'react-router-dom';
-import { Download, Smartphone, Monitor, CheckCircle, Wifi, WifiOff, Shield, BookOpen, RefreshCw } from 'lucide-react';
+import { Download, Smartphone, Monitor, CheckCircle, Wifi, WifiOff, Shield, BookOpen, RefreshCw, QrCode, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { QRCodeSVG } from 'qrcode.react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -188,12 +190,92 @@ const InstallApp = () => {
           ))}
         </div>
 
+        {/* QR Code for Users */}
+        <div className="stat-card">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+              <QrCode className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">QR Code Install untuk User</p>
+              <p className="text-xs text-muted-foreground">User scan QR code ini untuk install aplikasi di perangkat mereka</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center gap-4 p-6 rounded-xl border bg-background">
+            <QRCodeSVG
+              value={window.location.origin}
+              size={180}
+              level="H"
+              includeMargin
+              bgColor="transparent"
+              fgColor="currentColor"
+              className="text-foreground"
+            />
+            <p className="text-xs text-muted-foreground text-center break-all">{window.location.origin}</p>
+          </div>
+
+          <div className="flex gap-2 mt-4">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="flex-1">
+                  <QrCode className="w-4 h-4 mr-2" /> Perbesar
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-sm">
+                <DialogHeader>
+                  <DialogTitle className="text-center">Scan untuk Install</DialogTitle>
+                </DialogHeader>
+                <div className="flex flex-col items-center gap-4 py-4">
+                  <QRCodeSVG
+                    value={window.location.origin}
+                    size={280}
+                    level="H"
+                    includeMargin
+                    bgColor="transparent"
+                    fgColor="currentColor"
+                    className="text-foreground"
+                  />
+                  <p className="text-sm text-muted-foreground text-center">{settings.appName || 'Perpustakaan Digital'}</p>
+                  <p className="text-xs text-muted-foreground text-center break-all">{window.location.origin}</p>
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => {
+              const printWindow = window.open('', '_blank');
+              if (!printWindow) return;
+              printWindow.document.write(`
+                <html><head><title>QR Code Install</title>
+                <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;margin:0}h2{margin-bottom:4px}p{color:#666;font-size:14px}</style>
+                </head><body>
+                <h2>${settings.appName || 'Perpustakaan Digital'}</h2>
+                <p>${settings.schoolName || ''}</p>
+                <div style="margin:24px 0">${document.querySelector('.qr-print-source')?.innerHTML || ''}</div>
+                <p>Scan QR code ini untuk install aplikasi</p>
+                <p style="font-size:12px;color:#999">${window.location.origin}</p>
+                </body></html>
+              `);
+              // Re-render QR in print window
+              const svg = document.querySelector('.stat-card .flex.flex-col.items-center svg');
+              if (svg) {
+                const qrDiv = printWindow.document.querySelector('div[style*="margin"]');
+                if (qrDiv) qrDiv.innerHTML = svg.outerHTML;
+              }
+              printWindow.document.close();
+              setTimeout(() => { printWindow.print(); printWindow.close(); }, 300);
+            }}>
+              <Printer className="w-4 h-4 mr-2" /> Cetak QR
+            </Button>
+          </div>
+        </div>
+
         {/* Info */}
         <div className="rounded-xl border bg-muted/10 p-4">
           <p className="text-xs text-muted-foreground">
             <strong className="text-foreground">ℹ️ Catatan:</strong> Fitur install hanya tersedia untuk Super Admin. 
             Aplikasi yang terinstall akan berjalan dalam mode standalone tanpa address bar browser, 
             memberikan pengalaman pengguna seperti aplikasi native. Data tetap tersinkronisasi secara real-time.
+            QR Code dapat dicetak dan ditempel di perpustakaan agar siswa/guru mudah menginstall aplikasi.
           </p>
         </div>
       </div>
