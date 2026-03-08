@@ -29,19 +29,19 @@ export const mockBooks: Book[] = [
 ];
 
 export const mockStudents: Student[] = [
-  { id: 's1', name: 'Andi Pratama', nis: '10001', classId: 'cl1', className: 'X IPA 1', major: 'IPA', email: 'andi@sekolah.id', isActive: true },
-  { id: 's2', name: 'Budi Santoso', nis: '10002', classId: 'cl1', className: 'X IPA 1', major: 'IPA', email: 'budi.s@sekolah.id', isActive: true },
-  { id: 's3', name: 'Citra Dewi', nis: '10003', classId: 'cl2', className: 'X IPA 2', major: 'IPA', email: 'citra@sekolah.id', isActive: true },
-  { id: 's4', name: 'Dian Puspita', nis: '10004', classId: 'cl3', className: 'XI IPA 1', major: 'IPA', email: 'dian@sekolah.id', isActive: true },
-  { id: 's5', name: 'Eka Firmansyah', nis: '10005', classId: 'cl4', className: 'XI IPS 1', major: 'IPS', email: 'eka@sekolah.id', isActive: true },
+  { id: 's1', name: 'Andi Pratama', nis: '10001', classId: 'cl1', className: 'X IPA 1', major: 'IPA', email: 'andi@sekolah.id', isActive: true, membershipStart: '2024-01-15', membershipEnd: '2025-01-15' },
+  { id: 's2', name: 'Budi Santoso', nis: '10002', classId: 'cl1', className: 'X IPA 1', major: 'IPA', email: 'budi.s@sekolah.id', isActive: true, membershipStart: '2024-02-01', membershipEnd: '2025-02-01' },
+  { id: 's3', name: 'Citra Dewi', nis: '10003', classId: 'cl2', className: 'X IPA 2', major: 'IPA', email: 'citra@sekolah.id', isActive: true, membershipStart: '2024-01-20', membershipEnd: '2025-01-20' },
+  { id: 's4', name: 'Dian Puspita', nis: '10004', classId: 'cl3', className: 'XI IPA 1', major: 'IPA', email: 'dian@sekolah.id', isActive: true, membershipStart: '2024-03-01', membershipEnd: '2025-03-01' },
+  { id: 's5', name: 'Eka Firmansyah', nis: '10005', classId: 'cl4', className: 'XI IPS 1', major: 'IPS', email: 'eka@sekolah.id', isActive: true, membershipStart: '2024-01-10', membershipEnd: '2025-01-10' },
   { id: 's6', name: 'Fani Rahayu', nis: '10006', classId: 'cl5', className: 'XII IPA 1', major: 'IPA', email: 'fani@sekolah.id', isActive: false },
 ];
 
 export const mockTeachers: Teacher[] = [
-  { id: 't1', name: 'Pak Budi', nip: '198001012010011001', subject: 'Matematika', email: 'budi@sekolah.id', isActive: true },
-  { id: 't2', name: 'Ibu Ani', nip: '198502152011012002', subject: 'Bahasa Indonesia', email: 'ani@sekolah.id', isActive: true },
-  { id: 't3', name: 'Pak Joko', nip: '197903102009011003', subject: 'Fisika', email: 'joko@sekolah.id', isActive: true },
-  { id: 't4', name: 'Ibu Ratna', nip: '198207202012012004', subject: 'Biologi', email: 'ratna@sekolah.id', isActive: true },
+  { id: 't1', name: 'Pak Budi', nip: '198001012010011001', subject: 'Matematika', email: 'budi@sekolah.id', isActive: true, membershipStart: '2024-01-01', membershipEnd: '2025-12-31' },
+  { id: 't2', name: 'Ibu Ani', nip: '198502152011012002', subject: 'Bahasa Indonesia', email: 'ani@sekolah.id', isActive: true, membershipStart: '2024-01-01', membershipEnd: '2025-12-31' },
+  { id: 't3', name: 'Pak Joko', nip: '197903102009011003', subject: 'Fisika', email: 'joko@sekolah.id', isActive: true, membershipStart: '2024-02-15', membershipEnd: '2025-12-31' },
+  { id: 't4', name: 'Ibu Ratna', nip: '198207202012012004', subject: 'Biologi', email: 'ratna@sekolah.id', isActive: true, membershipStart: '2024-01-01', membershipEnd: '2025-06-30' },
   { id: 't5', name: 'Pak Hendra', nip: '198510052013011005', subject: 'Sejarah', email: 'hendra@sekolah.id', isActive: false },
 ];
 

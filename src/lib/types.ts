@@ -39,6 +39,8 @@ export interface Student {
   major: string;
   email: string;
   isActive: boolean;
+  membershipStart?: string;
+  membershipEnd?: string;
 }
 
 export interface Teacher {
@@ -49,6 +51,8 @@ export interface Teacher {
   subject: string;
   email: string;
   isActive: boolean;
+  membershipStart?: string;
+  membershipEnd?: string;
 }
 
 export interface SchoolClass {
