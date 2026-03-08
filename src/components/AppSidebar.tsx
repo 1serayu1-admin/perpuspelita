@@ -18,10 +18,12 @@ const menuItems = [
   { title: 'Pengembalian', icon: RotateCcw, path: '/returns', roles: ['super_admin', 'admin'] },
   { title: 'Laporan', icon: FileBarChart, path: '/reports', roles: ['super_admin', 'admin'] },
   { title: 'Log Aktivitas', icon: Activity, path: '/activity-log', roles: ['super_admin', 'admin'] },
+  { title: 'Pengaturan', icon: Settings, path: '/settings', roles: ['super_admin'] },
 ] as const;
 
 export function AppSidebar() {
   const { user, logout, hasRole } = useAuth();
+  const { settings } = useSettings();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
 
