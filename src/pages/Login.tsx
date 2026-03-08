@@ -151,29 +151,16 @@ const Login = () => {
           {/* Header */}
           <div className="mb-8 animate-fade-in">
             <h2 className="text-2xl font-bold text-foreground mb-1">
-              {isSignup ? 'Daftar Akun' : isSuperAdminLogin ? 'Masuk (Super Admin)' : 'Masuk'}
+              {isSuperAdminLogin ? 'Masuk (Super Admin)' : 'Masuk'}
             </h2>
             <p className="text-sm text-muted-foreground">
-              {isSignup ? 'Buat akun baru untuk mengakses perpustakaan' : isSuperAdminLogin ? 'Masukkan email dan password Anda' : 'Masukkan username dan password Anda'}
+              {isSuperAdminLogin ? 'Masukkan email dan password Anda' : 'Masukkan username dan password Anda'}
             </p>
           </div>
 
           {/* Form */}
           <form onSubmit={handleLogin} className="space-y-4">
-            {isSignup && (
-              <div className="relative animate-fade-in">
-                <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  placeholder="Nama Lengkap"
-                  className="pl-10 h-11 rounded-xl transition-shadow focus:shadow-md"
-                  required
-                />
-              </div>
-            )}
-            {isSuperAdminLogin || isSignup ? (
+            {isSuperAdminLogin ? (
               <div className="relative animate-fade-in" style={{ animationDelay: '0.1s', animationFillMode: 'both' }}>
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -228,35 +215,23 @@ const Login = () => {
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                  {isSignup ? 'Mendaftar...' : 'Masuk...'}
+                  Masuk...
                 </span>
               ) : (
                 <>
-                  {isSignup ? 'Daftar' : 'Masuk'} <ArrowRight className="w-4 h-4 ml-1" />
+                  Masuk <ArrowRight className="w-4 h-4 ml-1" />
                 </>
               )}
             </Button>
           </form>
 
           {/* Toggle super admin / username login */}
-          {!isSignup && (
-            <div className="mt-4 text-center">
-              <button
-                onClick={() => setIsSuperAdminLogin(s => !s)}
-                className="text-xs text-muted-foreground hover:text-primary hover:underline font-medium transition-colors"
-              >
-                {isSuperAdminLogin ? '← Kembali ke login username' : 'Login sebagai Super Admin (Email)'}
-              </button>
-            </div>
-          )}
-
-          {/* Toggle signup/login */}
-          <div className="mt-3 text-center">
+          <div className="mt-4 text-center">
             <button
-              onClick={() => { setIsSignup(s => !s); setIsSuperAdminLogin(false); }}
-              className="text-sm text-primary hover:underline font-medium"
+              onClick={() => setIsSuperAdminLogin(s => !s)}
+              className="text-xs text-muted-foreground hover:text-primary hover:underline font-medium transition-colors"
             >
-              {isSignup ? 'Sudah punya akun? Masuk' : 'Belum punya akun? Daftar'}
+              {isSuperAdminLogin ? '← Kembali ke login username' : 'Login sebagai Super Admin (Email)'}
             </button>
           </div>
 
