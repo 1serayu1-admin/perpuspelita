@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolData } from '@/hooks/useSchoolData';
 import { supabase } from '@/integrations/supabase/client';
 import { Database, Download, HardDrive, FileSpreadsheet, CheckCircle, Loader2, Upload, AlertTriangle } from 'lucide-react';
+import { sanitizeRestoreRow } from '@/lib/validation';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
