@@ -36,7 +36,7 @@ export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
 
   const filteredItems = menuItems.filter(item => hasRole(item.roles as any));
-  const pendingCount = getPendingCount();
+  const pendingCount = borrowRequests.filter((r: any) => r.status === 'pending').length;
 
   return (
     <aside className={cn(

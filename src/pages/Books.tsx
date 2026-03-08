@@ -153,20 +153,22 @@ const Books = () => {
     setBookingDialogOpen(true);
   };
 
-  const submitBooking = (e: React.FormEvent) => {
+  const submitBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!bookingBook || !user) return;
-    addRequest({
-      requesterId: user.id,
-      requesterName: user.name,
-      requesterRole: user.role as 'siswa' | 'guru',
-      bookId: bookingBook.id,
-      bookTitle: bookingBook.title,
+    const { error } = await supabase.from('borrow_requests').insert({
+      requester_id: user.id,
+      requester_name: user.name,
+      requester_role: user.role === 'super_admin' ? 'guru' : user.role,
+      book_id: bookingBook.id,
+      book_title: bookingBook.title,
       reason: bookingReason,
-      className: user.role === 'siswa' ? '' : undefined,
-      duration: user.role === 'guru' ? parseInt(bookingDuration) : undefined,
-    });
-    toast.success('Pengajuan peminjaman berhasil dikirim!');
+      class_name: user.role === 'siswa' ? '' : null,
+      duration: user.role === 'guru' ? parseInt(bookingDuration) : null,
+      school_id: user.schoolId || null,
+    } as any);
+    if (error) toast.error('Gagal mengirim pengajuan: ' + error.message);
+    else toast.success('Pengajuan peminjaman berhasil dikirim!');
     setBookingDialogOpen(false);
   };
 
