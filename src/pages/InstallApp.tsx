@@ -228,7 +228,7 @@ const InstallApp = () => {
                 </DialogHeader>
                 <div className="flex flex-col items-center gap-4 py-4">
                   <QRCodeSVG
-                    value={window.location.origin}
+                    value={`${window.location.origin}/login`}
                     size={280}
                     level="H"
                     includeMargin
@@ -236,7 +236,7 @@ const InstallApp = () => {
                     fgColor="#000000"
                   />
                   <p className="text-sm text-muted-foreground text-center">{settings.appName || 'Perpustakaan Digital'}</p>
-                  <p className="text-xs text-muted-foreground text-center break-all">{window.location.origin}</p>
+                  <p className="text-xs text-muted-foreground text-center break-all">{window.location.origin}/login</p>
                 </div>
               </DialogContent>
             </Dialog>
