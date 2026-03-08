@@ -34,12 +34,17 @@ const Login = () => {
           toast.error(result.message);
         }
       } else {
-        const result = await login(email, password);
+        let result;
+        if (isSuperAdminLogin) {
+          result = await login(email, password);
+        } else {
+          result = await loginWithUsername(username, password);
+        }
         if (result.success) {
           toast.success('Login berhasil!');
           navigate('/dashboard');
         } else {
-          toast.error(result.message || 'Email atau password salah');
+          toast.error(result.message || 'Username atau password salah');
         }
       }
     } catch {
