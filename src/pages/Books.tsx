@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
-import { useBorrowRequests } from '@/contexts/BorrowRequestContext';
+import { supabase } from '@/integrations/supabase/client';
 import { useSchoolData } from '@/hooks/useSchoolData';
 import { Search, Plus, Edit, Trash2, BookOpen, Upload, FileSpreadsheet, Download, Send } from 'lucide-react';
 import { Input } from '@/components/ui/input';
