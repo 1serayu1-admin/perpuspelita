@@ -250,10 +250,22 @@ const Login = () => {
             </Button>
           </form>
 
+          {/* Toggle super admin / username login */}
+          {!isSignup && (
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => setIsSuperAdminLogin(s => !s)}
+                className="text-xs text-muted-foreground hover:text-primary hover:underline font-medium transition-colors"
+              >
+                {isSuperAdminLogin ? '← Kembali ke login username' : 'Login sebagai Super Admin (Email)'}
+              </button>
+            </div>
+          )}
+
           {/* Toggle signup/login */}
-          <div className="mt-6 text-center">
+          <div className="mt-3 text-center">
             <button
-              onClick={() => setIsSignup(s => !s)}
+              onClick={() => { setIsSignup(s => !s); setIsSuperAdminLogin(false); }}
               className="text-sm text-primary hover:underline font-medium"
             >
               {isSignup ? 'Sudah punya akun? Masuk' : 'Belum punya akun? Daftar'}
