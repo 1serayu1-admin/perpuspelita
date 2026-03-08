@@ -55,7 +55,7 @@ const AdminManagement = () => {
   const [selectedSchool, setSelectedSchool] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [addDialog, setAddDialog] = useState(false);
-  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'admin' as AppRole, schoolId: '' });
+  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'admin' as AppRole, schoolId: '', username: '' });
 
   const isGlobalAdmin = user?.appRole === 'global_super_admin';
 
