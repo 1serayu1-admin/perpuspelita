@@ -95,6 +95,20 @@ const Teachers = () => {
     setMembershipDialogOpen(false);
   };
 
+  const handleCsvImport = async (rows: Record<string, string>[]) => {
+    let success = 0, failed = 0;
+    for (const row of rows) {
+      const name = row['nama'] || row['name'] || '';
+      const nip = row['nip'] || '';
+      const subject = row['mata pelajaran'] || row['subject'] || '';
+      const email = row['email'] || '';
+      if (!name) { failed++; continue; }
+      const { error } = await insert({ name, nip, subject, email });
+      if (error) failed++; else success++;
+    }
+    return { success, failed };
+  };
+
   return (
     <AppLayout>
       <div className="animate-fade-in space-y-4">
