@@ -5,6 +5,8 @@ import { Search, RotateCcw, CheckCircle, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { logActivity } from '@/hooks/useActivityLog';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Returns = () => {
   const { data: borrowings, loading, update } = useSchoolData<any>('borrowings');
