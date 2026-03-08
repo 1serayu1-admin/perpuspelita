@@ -114,6 +114,25 @@ const Students = () => {
     setMembershipDialogOpen(false);
   };
 
+  const handleCsvImport = async (rows: Record<string, string>[]) => {
+    let success = 0, failed = 0;
+    for (const row of rows) {
+      const name = row['nama'] || row['name'] || '';
+      const nis = row['nis'] || '';
+      const email = row['email'] || '';
+      const className = row['kelas'] || row['class'] || '';
+      const cls = classes.find(c => c.name.toLowerCase() === className.toLowerCase());
+      if (!name) { failed++; continue; }
+      const { error } = await insert({
+        name, nis, email,
+        class_id: cls?.id || null,
+        major: cls?.major || '',
+      });
+      if (error) failed++; else success++;
+    }
+    return { success, failed };
+  };
+
   return (
     <AppLayout>
       <div className="animate-fade-in space-y-4">
