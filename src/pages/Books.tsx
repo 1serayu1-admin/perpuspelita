@@ -35,7 +35,7 @@ interface DbCategory {
 
 const Books = () => {
   const { user, hasRole } = useAuth();
-  const { addRequest } = useBorrowRequests();
+  
   const isReadOnly = user?.role === 'siswa';
   const canEdit = hasRole(['super_admin', 'admin']);
 
