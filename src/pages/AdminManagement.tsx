@@ -261,6 +261,9 @@ const AdminManagement = () => {
           <Badge variant="outline" className="text-xs">
             {filtered.length} pengguna
           </Badge>
+          <Button variant="gradient" size="sm" onClick={() => setAddDialog(true)}>
+            <UserPlus className="w-4 h-4 mr-1" /> Tambah Pengguna
+          </Button>
         </div>
 
         {loading ? (
