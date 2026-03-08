@@ -92,6 +92,12 @@ const Backup = () => {
       return;
     }
 
+    // Limit file size to 10MB
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Ukuran file maksimal 10MB');
+      return;
+    }
+
     setRestoreFileName(file.name);
     const reader = new FileReader();
     reader.onload = (ev) => {

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { AppRole } from '@/lib/types';
+import { createUserSchema } from '@/lib/validation';
 
 interface UserWithRole {
   userId: string;
@@ -186,20 +187,25 @@ const AdminManagement = () => {
 
   const handleAddUser = async () => {
     const isSuperAdminRole = newUser.role === 'global_super_admin';
-    if (!newUser.name || !newUser.password) {
-      toast.error('Nama dan password wajib diisi');
+
+    // Validate with schema
+    const validation = createUserSchema.safeParse({
+      name: newUser.name,
+      username: newUser.username || '',
+      email: newUser.email || '',
+      password: newUser.password,
+    });
+    if (!validation.success) {
+      toast.error(validation.error.errors[0]?.message || 'Data tidak valid');
       return;
     }
+
     if (isSuperAdminRole && !newUser.email) {
       toast.error('Email wajib diisi untuk Super Admin');
       return;
     }
     if (!newUser.username && !isSuperAdminRole) {
       toast.error('Username wajib diisi');
-      return;
-    }
-    if (newUser.password.length < 6) {
-      toast.error('Password minimal 6 karakter');
       return;
     }
     setSaving(true);

@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { borrowRequestSchema } from '@/lib/validation';
 
 const BorrowRequestPage = () => {
   const { user } = useAuth();
@@ -52,14 +53,24 @@ const BorrowRequestPage = () => {
     const book = books.find((b: any) => b.id === selectedBookId);
     if (!book) { setSaving(false); return; }
 
+    // Validate reason
+    const validation = borrowRequestSchema.safeParse({ reason, duration: user?.appRole === 'guru' ? parseInt(duration) : null });
+    if (!validation.success) {
+      toast.error(validation.error.errors[0]?.message || 'Data tidak valid');
+      setSaving(false);
+      return;
+    }
+
+    const requesterRole = user.appRole === 'global_super_admin' || user.appRole === 'school_super_admin' ? 'guru' : user.appRole;
+
     const { error } = await supabase.from('borrow_requests').insert({
       requester_id: user.id,
       requester_name: user.name,
-      requester_role: user.role === 'super_admin' ? 'guru' : user.role,
+      requester_role: requesterRole,
       book_id: book.id,
       book_title: book.title,
       reason,
-      duration: user.role === 'guru' ? parseInt(duration) : null,
+      duration: user.appRole === 'guru' ? parseInt(duration) : null,
       school_id: user.schoolId || null,
     } as any);
 
@@ -108,7 +119,7 @@ const BorrowRequestPage = () => {
                     ))}
                   </select>
                 </div>
-                {user?.role === 'guru' && (
+                {user?.appRole === 'guru' && (
                   <div>
                     <label className="text-sm font-medium block mb-1.5">Durasi Pinjam (hari)</label>
                     <select value={duration} onChange={e => setDuration(e.target.value)} className="w-full h-9 rounded-md border bg-background px-3 text-sm">

@@ -165,15 +165,27 @@ const Books = () => {
   const submitBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!bookingBook || !user) return;
+
+    if (!bookingReason.trim() || bookingReason.trim().length < 1) {
+      toast.error('Alasan peminjaman wajib diisi');
+      return;
+    }
+    if (bookingReason.length > 500) {
+      toast.error('Alasan maksimal 500 karakter');
+      return;
+    }
+
+    const requesterRole = user.appRole === 'global_super_admin' || user.appRole === 'school_super_admin' ? 'guru' : user.appRole;
+
     const { error } = await supabase.from('borrow_requests').insert({
       requester_id: user.id,
       requester_name: user.name,
-      requester_role: user.role === 'super_admin' ? 'guru' : user.role,
+      requester_role: requesterRole,
       book_id: bookingBook.id,
       book_title: bookingBook.title,
-      reason: bookingReason,
-      class_name: user.role === 'siswa' ? '' : null,
-      duration: user.role === 'guru' ? parseInt(bookingDuration) : null,
+      reason: bookingReason.trim(),
+      class_name: user.appRole === 'siswa' ? '' : null,
+      duration: user.appRole === 'guru' ? parseInt(bookingDuration) : null,
       school_id: user.schoolId || null,
     } as any);
     if (error) toast.error('Gagal mengirim pengajuan: ' + error.message);
