@@ -192,7 +192,7 @@ const Dashboard = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className={`grid gap-4 ${isAdmin ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-6' : 'grid-cols-2 md:grid-cols-4'}`}>
+        <div className={`grid gap-3 sm:gap-4 ${isAdmin ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6' : 'grid-cols-2 sm:grid-cols-4'}`}>
           {stats.map(s => (
             <div key={s.label} className="stat-card">
               <div className="flex items-center justify-between mb-2">
