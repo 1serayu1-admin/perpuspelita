@@ -114,6 +114,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true };
   };
 
+  const loginWithUsername = async (username: string, password: string): Promise<{ success: boolean; message?: string }> => {
+    // Look up email from username
+    const { data: email, error: lookupError } = await supabase.rpc('get_email_by_username', { _username: username });
+    if (lookupError || !email) {
+      return { success: false, message: 'Username tidak ditemukan' };
+    }
+    return login(email, password);
+  };
+
   const signup = async (email: string, password: string, name: string): Promise<{ success: boolean; message: string }> => {
     const { error } = await supabase.auth.signUp({
       email,
