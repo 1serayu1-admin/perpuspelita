@@ -12,12 +12,10 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
   const [showPass, setShowPass] = useState(false);
-  const [isSignup, setIsSignup] = useState(false);
   const [isSuperAdminLogin, setIsSuperAdminLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, loginWithUsername, signup } = useAuth();
+  const { login, loginWithUsername } = useAuth();
   const { settings } = useSettings();
   const navigate = useNavigate();
 
@@ -25,27 +23,17 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      if (isSignup) {
-        const result = await signup(email, password, name);
-        if (result.success) {
-          toast.success(result.message);
-          setIsSignup(false);
-        } else {
-          toast.error(result.message);
-        }
+      let result;
+      if (isSuperAdminLogin) {
+        result = await login(email, password);
       } else {
-        let result;
-        if (isSuperAdminLogin) {
-          result = await login(email, password);
-        } else {
-          result = await loginWithUsername(username, password);
-        }
-        if (result.success) {
-          toast.success('Login berhasil!');
-          navigate('/dashboard');
-        } else {
-          toast.error(result.message || 'Username atau password salah');
-        }
+        result = await loginWithUsername(username, password);
+      }
+      if (result.success) {
+        toast.success('Login berhasil!');
+        navigate('/dashboard');
+      } else {
+        toast.error(result.message || 'Username atau password salah');
       }
     } catch {
       toast.error('Terjadi kesalahan');
