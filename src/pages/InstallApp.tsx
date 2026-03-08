@@ -204,14 +204,14 @@ const InstallApp = () => {
 
           <div className="flex flex-col items-center gap-4 p-6 rounded-xl border bg-white">
             <QRCodeSVG
-              value={window.location.origin}
+              value={`${window.location.origin}/login`}
               size={180}
               level="H"
               includeMargin
               bgColor="#ffffff"
               fgColor="#000000"
             />
-            <p className="text-xs text-muted-foreground text-center break-all">{window.location.origin}</p>
+            <p className="text-xs text-muted-foreground text-center break-all">{window.location.origin}/login</p>
             <p className="text-[10px] text-muted-foreground">Compatible: Android • iOS • HarmonyOS</p>
           </div>
 
@@ -228,7 +228,7 @@ const InstallApp = () => {
                 </DialogHeader>
                 <div className="flex flex-col items-center gap-4 py-4">
                   <QRCodeSVG
-                    value={window.location.origin}
+                    value={`${window.location.origin}/login`}
                     size={280}
                     level="H"
                     includeMargin
@@ -236,7 +236,7 @@ const InstallApp = () => {
                     fgColor="#000000"
                   />
                   <p className="text-sm text-muted-foreground text-center">{settings.appName || 'Perpustakaan Digital'}</p>
-                  <p className="text-xs text-muted-foreground text-center break-all">{window.location.origin}</p>
+                  <p className="text-xs text-muted-foreground text-center break-all">{window.location.origin}/login</p>
                 </div>
               </DialogContent>
             </Dialog>
@@ -251,7 +251,7 @@ const InstallApp = () => {
                 <p>${settings.schoolName || ''}</p>
                 <div style="margin:24px 0">${document.querySelector('.qr-print-source')?.innerHTML || ''}</div>
                 <p>Scan QR code ini untuk install aplikasi</p>
-                <p style="font-size:12px;color:#999">${window.location.origin}</p>
+                <p style="font-size:12px;color:#999">${window.location.origin}/login</p>
                 </body></html>
               `);
               // Re-render QR in print window
