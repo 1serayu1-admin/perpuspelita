@@ -1,4 +1,6 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export type IpAccessMode = 'open' | 'restricted';
 
@@ -14,7 +16,8 @@ export interface SchoolSettings {
 
 interface SettingsContextType {
   settings: SchoolSettings;
-  updateSettings: (s: Partial<SchoolSettings>) => void;
+  updateSettings: (s: Partial<SchoolSettings>) => Promise<void>;
+  loading: boolean;
 }
 
 const defaultSettings: SchoolSettings = {
@@ -30,25 +33,57 @@ const defaultSettings: SchoolSettings = {
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<SchoolSettings>(() => {
-    const saved = localStorage.getItem('school_settings');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return { ...defaultSettings, ...parsed };
-    }
-    return defaultSettings;
-  });
+  const { user } = useAuth();
+  const [settings, setSettings] = useState<SchoolSettings>(defaultSettings);
+  const [loading, setLoading] = useState(true);
 
-  const updateSettings = (partial: Partial<SchoolSettings>) => {
-    setSettings(prev => {
-      const next = { ...prev, ...partial };
-      localStorage.setItem('school_settings', JSON.stringify(next));
-      return next;
-    });
+  const fetchSettings = useCallback(async () => {
+    if (!user?.schoolId) {
+      setLoading(false);
+      return;
+    }
+
+    const { data, error } = await (supabase as any)
+      .from('schools')
+      .select('name, logo_url, motto, vision')
+      .eq('id', user.schoolId)
+      .single();
+
+    if (!error && data) {
+      setSettings(prev => ({
+        ...prev,
+        schoolName: data.name || prev.schoolName,
+        logoUrl: data.logo_url || '',
+        motto: data.motto || '',
+        visi: data.vision || '',
+      }));
+    }
+    setLoading(false);
+  }, [user?.schoolId]);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
+  const updateSettings = async (partial: Partial<SchoolSettings>) => {
+    const next = { ...settings, ...partial };
+    setSettings(next);
+
+    if (user?.schoolId) {
+      await (supabase as any)
+        .from('schools')
+        .update({
+          name: next.schoolName,
+          logo_url: next.logoUrl || null,
+          motto: next.motto || null,
+          vision: next.visi || null,
+        })
+        .eq('id', user.schoolId);
+    }
   };
 
   return (
-    <SettingsContext.Provider value={{ settings, updateSettings }}>
+    <SettingsContext.Provider value={{ settings, updateSettings, loading }}>
       {children}
     </SettingsContext.Provider>
   );
