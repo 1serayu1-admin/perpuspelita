@@ -159,6 +159,10 @@ const InstallApp = () => {
                       <p className="text-xs text-muted-foreground">Buka di Chrome → Tap menu (⋮) → "Install App" atau "Add to Home Screen"</p>
                     </div>
                     <div className="flex items-start gap-2">
+                      <Badge variant="outline" className="text-[10px] mt-0.5 flex-shrink-0">HarmonyOS</Badge>
+                      <p className="text-xs text-muted-foreground">Buka di Huawei Browser → Tap menu (⋮) → "Tambahkan ke Layar Utama" atau gunakan Quick App Center</p>
+                    </div>
+                    <div className="flex items-start gap-2">
                       <Badge variant="outline" className="text-[10px] mt-0.5 flex-shrink-0">Desktop</Badge>
                       <p className="text-xs text-muted-foreground">Buka di Chrome/Edge → Klik ikon install (⊕) di address bar</p>
                     </div>
