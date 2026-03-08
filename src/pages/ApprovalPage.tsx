@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolData } from '@/hooks/useSchoolData';
+import { supabase } from '@/integrations/supabase/client';
 import { Search, CheckCircle, XCircle, Clock, Filter, BookOpen, GraduationCap, Users, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
