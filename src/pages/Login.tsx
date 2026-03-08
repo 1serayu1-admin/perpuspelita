@@ -185,17 +185,31 @@ const Login = () => {
                 />
               </div>
             )}
-            <div className="relative animate-fade-in" style={{ animationDelay: '0.1s', animationFillMode: 'both' }}>
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="Email"
-                className="pl-10 h-11 rounded-xl transition-shadow focus:shadow-md"
-                required
-              />
-            </div>
+            {isSuperAdminLogin || isSignup ? (
+              <div className="relative animate-fade-in" style={{ animationDelay: '0.1s', animationFillMode: 'both' }}>
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="Email"
+                  className="pl-10 h-11 rounded-xl transition-shadow focus:shadow-md"
+                  required
+                />
+              </div>
+            ) : (
+              <div className="relative animate-fade-in" style={{ animationDelay: '0.1s', animationFillMode: 'both' }}>
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  placeholder="Username"
+                  className="pl-10 h-11 rounded-xl transition-shadow focus:shadow-md"
+                  required
+                />
+              </div>
+            )}
             <div className="relative animate-fade-in" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
