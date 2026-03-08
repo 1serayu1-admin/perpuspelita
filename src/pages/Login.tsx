@@ -32,12 +32,12 @@ const Login = () => {
           toast.error(result.message);
         }
       } else {
-        const success = await login(email, password);
-        if (success) {
+        const result = await login(email, password);
+        if (result.success) {
           toast.success('Login berhasil!');
           navigate('/dashboard');
         } else {
-          toast.error('Email atau password salah');
+          toast.error(result.message || 'Email atau password salah');
         }
       }
     } catch {
