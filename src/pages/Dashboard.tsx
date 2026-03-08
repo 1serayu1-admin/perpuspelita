@@ -192,13 +192,13 @@ const Dashboard = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className={`grid gap-4 ${isAdmin ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-6' : 'grid-cols-2 md:grid-cols-4'}`}>
+        <div className={`grid gap-3 sm:gap-4 ${isAdmin ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6' : 'grid-cols-2 sm:grid-cols-4'}`}>
           {stats.map(s => (
             <div key={s.label} className="stat-card">
               <div className="flex items-center justify-between mb-2">
                 <s.icon className={`w-5 h-5 ${s.color}`} />
               </div>
-              <p className="text-2xl font-bold text-foreground">{s.value}</p>
+              <p className="text-lg sm:text-2xl font-bold text-foreground">{s.value}</p>
               <p className="text-xs text-muted-foreground">{s.label}</p>
             </div>
           ))}
@@ -207,8 +207,8 @@ const Dashboard = () => {
         {/* Charts - only for admin */}
         {isAdmin && (
           <>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="stat-card lg:col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="stat-card md:col-span-2">
                 <h3 className="text-sm font-semibold text-foreground mb-4">Peminjaman Buku per Bulan</h3>
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={monthlyBorrowData}>
