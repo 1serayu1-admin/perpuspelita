@@ -2,13 +2,14 @@ import { NavLink as RouterNavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useBorrowRequests } from '@/contexts/BorrowRequestContext';
-import { BookOpen, LayoutDashboard, Library, Users, GraduationCap, School, BookCopy, RotateCcw, FileBarChart, Activity, FolderTree, ChevronLeft, ChevronRight, LogOut, Settings, Database, Shield, Send, ClipboardCheck, Download } from 'lucide-react';
+import { BookOpen, LayoutDashboard, Library, Users, GraduationCap, School, BookCopy, RotateCcw, FileBarChart, Activity, FolderTree, ChevronLeft, ChevronRight, LogOut, Settings, Database, Shield, Send, ClipboardCheck, Download, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 
 const menuItems = [
   { title: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['super_admin', 'admin', 'guru', 'siswa'] },
+  { title: 'Kelola Sekolah', icon: Globe, path: '/schools', roles: ['super_admin'] },
   { title: 'Buku', icon: BookOpen, path: '/books', roles: ['super_admin', 'admin', 'guru', 'siswa'] },
   { title: 'Pengajuan Pinjam', icon: Send, path: '/borrow-request', roles: ['siswa', 'guru'] },
   { title: 'Persetujuan', icon: ClipboardCheck, path: '/approval', roles: ['super_admin', 'admin'] },

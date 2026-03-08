@@ -14,6 +14,333 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action: string
+          created_at: string
+          detail: string
+          id: string
+          school_id: string | null
+          user_name: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          detail?: string
+          id?: string
+          school_id?: string | null
+          user_name: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          detail?: string
+          id?: string
+          school_id?: string | null
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      books: {
+        Row: {
+          author: string
+          available: number
+          category_id: string | null
+          cover_url: string | null
+          created_at: string
+          id: string
+          isbn: string
+          publisher: string
+          school_id: string | null
+          shelf_location: string
+          stock: number
+          title: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          author?: string
+          available?: number
+          category_id?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          isbn?: string
+          publisher?: string
+          school_id?: string | null
+          shelf_location?: string
+          stock?: number
+          title: string
+          updated_at?: string
+          year?: number
+        }
+        Update: {
+          author?: string
+          available?: number
+          category_id?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          isbn?: string
+          publisher?: string
+          school_id?: string | null
+          shelf_location?: string
+          stock?: number
+          title?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "books_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "books_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      borrow_requests: {
+        Row: {
+          book_id: string | null
+          book_title: string
+          class_name: string | null
+          created_at: string
+          duration: number | null
+          id: string
+          reason: string
+          rejection_reason: string | null
+          request_date: string
+          requester_id: string
+          requester_name: string
+          requester_role: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          school_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          book_id?: string | null
+          book_title: string
+          class_name?: string | null
+          created_at?: string
+          duration?: number | null
+          id?: string
+          reason?: string
+          rejection_reason?: string | null
+          request_date?: string
+          requester_id: string
+          requester_name: string
+          requester_role: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          book_id?: string | null
+          book_title?: string
+          class_name?: string | null
+          created_at?: string
+          duration?: number | null
+          id?: string
+          reason?: string
+          rejection_reason?: string | null
+          request_date?: string
+          requester_id?: string
+          requester_name?: string
+          requester_role?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "borrow_requests_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "borrow_requests_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      borrowings: {
+        Row: {
+          book_id: string | null
+          book_title: string
+          borrow_date: string
+          borrower_id: string
+          borrower_name: string
+          class_name: string | null
+          created_at: string
+          due_date: string
+          duration: number | null
+          id: string
+          return_date: string | null
+          school_id: string | null
+          status: string
+          subject: string | null
+          teacher_name: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          book_id?: string | null
+          book_title: string
+          borrow_date?: string
+          borrower_id: string
+          borrower_name: string
+          class_name?: string | null
+          created_at?: string
+          due_date: string
+          duration?: number | null
+          id?: string
+          return_date?: string | null
+          school_id?: string | null
+          status?: string
+          subject?: string | null
+          teacher_name?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          book_id?: string | null
+          book_title?: string
+          borrow_date?: string
+          borrower_id?: string
+          borrower_name?: string
+          class_name?: string | null
+          created_at?: string
+          due_date?: string
+          duration?: number | null
+          id?: string
+          return_date?: string | null
+          school_id?: string | null
+          status?: string
+          subject?: string | null
+          teacher_name?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "borrowings_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "borrowings_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          school_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          school_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          school_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categories_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classes: {
+        Row: {
+          created_at: string
+          homeroom_teacher: string
+          id: string
+          major: string
+          name: string
+          school_id: string | null
+          student_count: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          homeroom_teacher?: string
+          id?: string
+          major?: string
+          name: string
+          school_id?: string | null
+          student_count?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          homeroom_teacher?: string
+          id?: string
+          major?: string
+          name?: string
+          school_id?: string | null
+          student_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classes_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -102,6 +429,122 @@ export type Database = {
           vision?: string | null
         }
         Relationships: []
+      }
+      students: {
+        Row: {
+          class_id: string | null
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          major: string
+          membership_end: string | null
+          membership_start: string | null
+          name: string
+          nis: string
+          school_id: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          class_id?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          major?: string
+          membership_end?: string | null
+          membership_start?: string | null
+          name: string
+          nis?: string
+          school_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          class_id?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          major?: string
+          membership_end?: string | null
+          membership_start?: string | null
+          name?: string
+          nis?: string
+          school_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "students_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teachers: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          membership_end: string | null
+          membership_start: string | null
+          name: string
+          nip: string
+          school_id: string | null
+          subject: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          membership_end?: string | null
+          membership_start?: string | null
+          name: string
+          nip?: string
+          school_id?: string | null
+          subject?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          membership_end?: string | null
+          membership_start?: string | null
+          name?: string
+          nip?: string
+          school_id?: string | null
+          subject?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teachers_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
