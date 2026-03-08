@@ -138,8 +138,12 @@ const Students = () => {
       <div className="animate-fade-in space-y-4">
         <div className="page-header">
           <h1 className="page-title">Manajemen Siswa</h1>
-          <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditItem(null); }}>
-            <DialogTrigger asChild><Button size="sm" variant="gradient"><Plus className="w-4 h-4 mr-1" /> Tambah Siswa</Button></DialogTrigger>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setCsvOpen(true)}>
+              <Upload className="w-4 h-4 mr-1" /> Import CSV
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditItem(null); }}>
+              <DialogTrigger asChild><Button size="sm" variant="gradient"><Plus className="w-4 h-4 mr-1" /> Tambah Siswa</Button></DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>{editItem ? 'Edit Siswa' : 'Tambah Siswa'}</DialogTitle></DialogHeader>
               <form onSubmit={handleSave} className="space-y-3">
