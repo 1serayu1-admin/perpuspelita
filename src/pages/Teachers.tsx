@@ -52,6 +52,13 @@ const Teachers = () => {
       email: form.get('email') as string,
     };
 
+    const result = teacherSchema.safeParse(payload);
+    if (!result.success) {
+      const firstError = result.error.errors[0]?.message || 'Data tidak valid';
+      toast.error(firstError);
+      return;
+    }
+
     if (editItem) {
       const { error } = await update(editItem.id, payload);
       if (error) toast.error('Gagal memperbarui guru');

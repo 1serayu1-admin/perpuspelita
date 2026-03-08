@@ -87,6 +87,13 @@ const Books = () => {
       shelf_location: form.get('shelfLocation') as string,
     };
 
+    const result = bookSchema.safeParse(payload);
+    if (!result.success) {
+      const firstError = result.error.errors[0]?.message || 'Data tidak valid';
+      toast.error(firstError);
+      return;
+    }
+
     if (editBook) {
       const { error } = await update(editBook.id, payload);
       if (error) toast.error('Gagal memperbarui buku');
