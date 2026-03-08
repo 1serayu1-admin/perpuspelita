@@ -1,46 +1,58 @@
 import { useState } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
-import { mockBooks, mockTeachers, mockTransactions } from '@/data/mockData';
-import { BorrowTransaction } from '@/lib/types';
-import { Search, Plus, BookCopy } from 'lucide-react';
+import { useSchoolData } from '@/hooks/useSchoolData';
+import { useAuth } from '@/contexts/AuthContext';
+import { Search, Plus, BookCopy, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
 const BorrowRegular = () => {
-  const [transactions, setTransactions] = useState<BorrowTransaction[]>(mockTransactions.filter(t => t.type === 'regular'));
+  const { user } = useAuth();
+  const { data: borrowings, loading, insert } = useSchoolData<any>('borrowings');
+  const { data: books } = useSchoolData<any>('books');
+  const { data: teachers } = useSchoolData<any>('teachers');
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const filtered = transactions.filter(t => t.borrowerName.toLowerCase().includes(search.toLowerCase()) || t.bookTitle.toLowerCase().includes(search.toLowerCase()));
+  const regularBorrowings = borrowings.filter((b: any) => b.type === 'regular');
+  const filtered = regularBorrowings.filter((t: any) =>
+    t.borrower_name.toLowerCase().includes(search.toLowerCase()) ||
+    t.book_title.toLowerCase().includes(search.toLowerCase())
+  );
 
-  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setSaving(true);
     const form = new FormData(e.currentTarget);
     const bookId = form.get('bookId') as string;
     const teacherId = form.get('teacherId') as string;
-    const book = mockBooks.find(b => b.id === bookId);
-    const teacher = mockTeachers.find(t => t.id === teacherId);
     const days = parseInt(form.get('days') as string);
+
+    const book = books.find((b: any) => b.id === bookId);
+    const teacher = teachers.find((t: any) => t.id === teacherId);
+
     const borrowDate = new Date().toISOString().split('T')[0];
     const due = new Date();
     due.setDate(due.getDate() + days);
 
-    const data: BorrowTransaction = {
-      id: `tr${Date.now()}`,
+    const { error } = await insert({
       type: 'regular',
-      borrowerName: teacher?.name || '',
-      borrowerId: teacherId,
-      bookId,
-      bookTitle: book?.title || '',
-      borrowDate,
-      dueDate: due.toISOString().split('T')[0],
+      borrower_name: teacher?.name || '',
+      borrower_id: teacher?.user_id || user?.id,
+      book_id: bookId,
+      book_title: book?.title || '',
+      borrow_date: borrowDate,
+      due_date: due.toISOString().split('T')[0],
       status: 'borrowed',
-    };
-    setTransactions(prev => [...prev, data]);
-    toast.success('Peminjaman berhasil dicatat');
+      duration: days,
+    } as any);
+
+    if (error) toast.error('Gagal mencatat peminjaman: ' + error.message);
+    else toast.success('Peminjaman berhasil dicatat');
+    setSaving(false);
     setDialogOpen(false);
   };
 
@@ -66,13 +78,19 @@ const BorrowRegular = () => {
                 <div>
                   <label className="text-sm font-medium">Guru</label>
                   <select name="teacherId" className="w-full h-9 rounded-md border bg-background px-3 text-sm" required>
-                    {mockTeachers.filter(t => t.isActive).map(t => <option key={t.id} value={t.id}>{t.name} - {t.subject}</option>)}
+                    <option value="">-- Pilih guru --</option>
+                    {teachers.filter((t: any) => t.is_active).map((t: any) => (
+                      <option key={t.id} value={t.id}>{t.name} - {t.subject}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Buku</label>
                   <select name="bookId" className="w-full h-9 rounded-md border bg-background px-3 text-sm" required>
-                    {mockBooks.filter(b => b.available > 0).map(b => <option key={b.id} value={b.id}>{b.title} (tersedia: {b.available})</option>)}
+                    <option value="">-- Pilih buku --</option>
+                    {books.filter((b: any) => b.available > 0).map((b: any) => (
+                      <option key={b.id} value={b.id}>{b.title} (tersedia: {b.available})</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -83,7 +101,10 @@ const BorrowRegular = () => {
                     <option value="14">14 hari</option>
                   </select>
                 </div>
-                <Button type="submit" className="w-full"><BookCopy className="w-4 h-4 mr-1" /> Catat Peminjaman</Button>
+                <Button type="submit" className="w-full" disabled={saving}>
+                  {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+                  <BookCopy className="w-4 h-4 mr-1" /> Catat Peminjaman
+                </Button>
               </form>
             </DialogContent>
           </Dialog>
@@ -96,36 +117,46 @@ const BorrowRegular = () => {
           </div>
         </div>
 
-        <div className="data-table-wrapper">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/30">
-                  <th className="text-left p-3 font-medium text-muted-foreground">Guru</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Buku</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Tgl Pinjam</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Batas Kembali</th>
-                  <th className="text-center p-3 font-medium text-muted-foreground">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(t => (
-                  <tr key={t.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
-                    <td className="p-3 font-medium text-foreground">{t.borrowerName}</td>
-                    <td className="p-3 text-foreground">{t.bookTitle}</td>
-                    <td className="p-3 hidden md:table-cell text-muted-foreground">{t.borrowDate}</td>
-                    <td className="p-3 hidden md:table-cell text-muted-foreground">{t.dueDate}</td>
-                    <td className="p-3 text-center">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${statusColor(t.status)}`}>
-                        {t.status === 'borrowed' ? 'Dipinjam' : t.status === 'returned' ? 'Dikembalikan' : 'Terlambat'}
-                      </span>
-                    </td>
+        {loading ? (
+          <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+        ) : (
+          <div className="data-table-wrapper">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <th className="text-left p-3 font-medium text-muted-foreground">Guru</th>
+                    <th className="text-left p-3 font-medium text-muted-foreground">Buku</th>
+                    <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Tgl Pinjam</th>
+                    <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Batas Kembali</th>
+                    <th className="text-center p-3 font-medium text-muted-foreground">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filtered.map((t: any) => (
+                    <tr key={t.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="p-3 font-medium text-foreground">{t.borrower_name}</td>
+                      <td className="p-3 text-foreground">{t.book_title}</td>
+                      <td className="p-3 hidden md:table-cell text-muted-foreground">{t.borrow_date}</td>
+                      <td className="p-3 hidden md:table-cell text-muted-foreground">{t.due_date}</td>
+                      <td className="p-3 text-center">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${statusColor(t.status)}`}>
+                          {t.status === 'borrowed' ? 'Dipinjam' : t.status === 'returned' ? 'Dikembalikan' : 'Terlambat'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {filtered.length === 0 && (
+                    <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">
+                      <BookCopy className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">Belum ada peminjaman reguler</p>
+                    </td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </AppLayout>
   );

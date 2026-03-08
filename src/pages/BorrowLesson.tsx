@@ -1,51 +1,63 @@
 import { useState } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
-import { mockBooks, mockStudents, mockTeachers, mockClasses, mockTransactions } from '@/data/mockData';
-import { BorrowTransaction } from '@/lib/types';
-import { Search, Plus, Clock } from 'lucide-react';
+import { useSchoolData } from '@/hooks/useSchoolData';
+import { useAuth } from '@/contexts/AuthContext';
+import { Search, Plus, Clock, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
 const BorrowLesson = () => {
-  const [transactions, setTransactions] = useState<BorrowTransaction[]>(mockTransactions.filter(t => t.type === 'lesson'));
+  const { user } = useAuth();
+  const { data: borrowings, loading, insert } = useSchoolData<any>('borrowings');
+  const { data: books } = useSchoolData<any>('books');
+  const { data: students } = useSchoolData<any>('students');
+  const { data: teachers } = useSchoolData<any>('teachers');
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [customDuration, setCustomDuration] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const filtered = transactions.filter(t => t.borrowerName.toLowerCase().includes(search.toLowerCase()) || t.bookTitle.toLowerCase().includes(search.toLowerCase()));
+  const lessonBorrowings = borrowings.filter((b: any) => b.type === 'lesson');
+  const filtered = lessonBorrowings.filter((t: any) =>
+    t.borrower_name.toLowerCase().includes(search.toLowerCase()) ||
+    t.book_title.toLowerCase().includes(search.toLowerCase())
+  );
 
-  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setSaving(true);
     const form = new FormData(e.currentTarget);
     const studentId = form.get('studentId') as string;
     const bookId = form.get('bookId') as string;
     const teacherId = form.get('teacherId') as string;
     const duration = parseInt(form.get('duration') as string);
-    const student = mockStudents.find(s => s.id === studentId);
-    const book = mockBooks.find(b => b.id === bookId);
-    const teacher = mockTeachers.find(t => t.id === teacherId);
+
+    const student = students.find((s: any) => s.id === studentId);
+    const book = books.find((b: any) => b.id === bookId);
+    const teacher = teachers.find((t: any) => t.id === teacherId);
     const now = new Date();
     const due = new Date(now.getTime() + duration * 60000);
 
-    const data: BorrowTransaction = {
-      id: `tr${Date.now()}`,
+    const { error } = await insert({
       type: 'lesson',
-      borrowerName: student?.name || '',
-      borrowerId: studentId,
-      bookId,
-      bookTitle: book?.title || '',
-      borrowDate: now.toISOString().split('T')[0],
-      dueDate: due.toISOString(),
+      borrower_name: student?.name || '',
+      borrower_id: student?.user_id || user?.id,
+      book_id: bookId,
+      book_title: book?.title || '',
+      borrow_date: now.toISOString().split('T')[0],
+      due_date: due.toISOString(),
       status: 'borrowed',
-      className: student?.className,
-      subject: teacher?.subject,
-      teacherName: teacher?.name,
+      class_name: student?.class_name || '',
+      subject: teacher?.subject || '',
+      teacher_name: teacher?.name || '',
       duration,
-    };
-    setTransactions(prev => [...prev, data]);
-    toast.success(`Peminjaman dicatat. Batas: ${duration} menit`);
+    } as any);
+
+    if (error) toast.error('Gagal mencatat peminjaman: ' + error.message);
+    else toast.success(`Peminjaman dicatat. Batas: ${duration} menit`);
+    setSaving(false);
     setDialogOpen(false);
   };
 
@@ -71,19 +83,28 @@ const BorrowLesson = () => {
                 <div>
                   <label className="text-sm font-medium">Siswa</label>
                   <select name="studentId" className="w-full h-9 rounded-md border bg-background px-3 text-sm" required>
-                    {mockStudents.filter(s => s.isActive).map(s => <option key={s.id} value={s.id}>{s.name} - {s.className}</option>)}
+                    <option value="">-- Pilih siswa --</option>
+                    {students.filter((s: any) => s.is_active).map((s: any) => (
+                      <option key={s.id} value={s.id}>{s.name} - {s.nis}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Buku</label>
                   <select name="bookId" className="w-full h-9 rounded-md border bg-background px-3 text-sm" required>
-                    {mockBooks.filter(b => b.available > 0).map(b => <option key={b.id} value={b.id}>{b.title}</option>)}
+                    <option value="">-- Pilih buku --</option>
+                    {books.filter((b: any) => b.available > 0).map((b: any) => (
+                      <option key={b.id} value={b.id}>{b.title}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Guru Pengampu</label>
                   <select name="teacherId" className="w-full h-9 rounded-md border bg-background px-3 text-sm" required>
-                    {mockTeachers.filter(t => t.isActive).map(t => <option key={t.id} value={t.id}>{t.name} - {t.subject}</option>)}
+                    <option value="">-- Pilih guru --</option>
+                    {teachers.filter((t: any) => t.is_active).map((t: any) => (
+                      <option key={t.id} value={t.id}>{t.name} - {t.subject}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -104,7 +125,10 @@ const BorrowLesson = () => {
                     </div>
                   )}
                 </div>
-                <Button type="submit" className="w-full"><Clock className="w-4 h-4 mr-1" /> Catat Peminjaman</Button>
+                <Button type="submit" className="w-full" disabled={saving}>
+                  {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+                  <Clock className="w-4 h-4 mr-1" /> Catat Peminjaman
+                </Button>
               </form>
             </DialogContent>
           </Dialog>
@@ -117,38 +141,48 @@ const BorrowLesson = () => {
           </div>
         </div>
 
-        <div className="data-table-wrapper">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/30">
-                  <th className="text-left p-3 font-medium text-muted-foreground">Siswa</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Kelas</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Buku</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Guru</th>
-                  <th className="text-center p-3 font-medium text-muted-foreground">Durasi</th>
-                  <th className="text-center p-3 font-medium text-muted-foreground">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(t => (
-                  <tr key={t.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
-                    <td className="p-3 font-medium text-foreground">{t.borrowerName}</td>
-                    <td className="p-3 hidden md:table-cell text-muted-foreground">{t.className}</td>
-                    <td className="p-3 text-foreground">{t.bookTitle}</td>
-                    <td className="p-3 hidden md:table-cell text-muted-foreground">{t.teacherName}</td>
-                    <td className="p-3 text-center text-muted-foreground">{t.duration} mnt</td>
-                    <td className="p-3 text-center">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${statusColor(t.status)}`}>
-                        {t.status === 'borrowed' ? 'Dipinjam' : t.status === 'returned' ? 'Dikembalikan' : 'Terlambat'}
-                      </span>
-                    </td>
+        {loading ? (
+          <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+        ) : (
+          <div className="data-table-wrapper">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <th className="text-left p-3 font-medium text-muted-foreground">Siswa</th>
+                    <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Kelas</th>
+                    <th className="text-left p-3 font-medium text-muted-foreground">Buku</th>
+                    <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Guru</th>
+                    <th className="text-center p-3 font-medium text-muted-foreground">Durasi</th>
+                    <th className="text-center p-3 font-medium text-muted-foreground">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filtered.map((t: any) => (
+                    <tr key={t.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="p-3 font-medium text-foreground">{t.borrower_name}</td>
+                      <td className="p-3 hidden md:table-cell text-muted-foreground">{t.class_name}</td>
+                      <td className="p-3 text-foreground">{t.book_title}</td>
+                      <td className="p-3 hidden md:table-cell text-muted-foreground">{t.teacher_name}</td>
+                      <td className="p-3 text-center text-muted-foreground">{t.duration} mnt</td>
+                      <td className="p-3 text-center">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${statusColor(t.status)}`}>
+                          {t.status === 'borrowed' ? 'Dipinjam' : t.status === 'returned' ? 'Dikembalikan' : 'Terlambat'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {filtered.length === 0 && (
+                    <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">
+                      <Clock className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">Belum ada peminjaman pelajaran</p>
+                    </td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </AppLayout>
   );
