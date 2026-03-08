@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { NetworkStatus } from "@/components/NetworkStatus";
-import { SettingsProvider } from "@/contexts/SettingsContext";
 import type { Role } from "@/lib/types";
 
 import Login from "./pages/Login";
