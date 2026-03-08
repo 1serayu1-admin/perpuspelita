@@ -15,18 +15,23 @@ import { logActivity } from '@/hooks/useActivityLog';
 
 const ApprovalPage = () => {
   const { user } = useAuth();
-  const { data: requests, loading, update } = useSchoolData<any>('borrow_requests');
+  const { data: requests, loading, update, refetch } = useSchoolData<any>('borrow_requests');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedReqId, setSelectedReqId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [page, setPage] = useState(1);
+  const perPage = 20;
 
   const filtered = requests.filter((r: any) => {
     const matchSearch = r.requester_name.toLowerCase().includes(search.toLowerCase()) || r.book_title.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'all' || r.status === statusFilter;
     return matchSearch && matchStatus;
   });
+
+  const totalPages = Math.ceil(filtered.length / perPage);
+  const paginated = filtered.slice((page - 1) * perPage, page * perPage);
 
   const pendingCount = requests.filter((r: any) => r.status === 'pending').length;
   const approvedCount = requests.filter((r: any) => r.status === 'approved').length;
@@ -35,20 +40,23 @@ const ApprovalPage = () => {
   const handleApprove = async (id: string) => {
     if (!window.confirm('Yakin ingin menyetujui pengajuan ini?')) return;
 
-    const req = requests.find((r: any) => r.id === id);
-    if (!req || req.status !== 'pending') {
+    // Re-fetch the request to get latest status (prevent double-approve)
+    const { data: freshReq, error: fetchErr } = await (supabase as any)
+      .from('borrow_requests')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (fetchErr || !freshReq || freshReq.status !== 'pending') {
       toast.error('Pengajuan sudah diproses atau tidak ditemukan');
+      await refetch();
       return;
     }
 
-    // Check book availability first
-    if (req.book_id) {
-      const { data: book } = await (supabase as any)
-        .from('books')
-        .select('available')
-        .eq('id', req.book_id)
-        .maybeSingle();
-      if (!book || book.available <= 0) {
+    // Atomic decrement - prevents race condition
+    if (freshReq.book_id) {
+      const { data: decremented } = await supabase.rpc('decrement_book_available', { _book_id: freshReq.book_id });
+      if (!decremented) {
         toast.error('Stok buku sudah habis, tidak dapat menyetujui');
         return;
       }
@@ -61,45 +69,34 @@ const ApprovalPage = () => {
     } as any);
     if (error) {
       toast.error('Gagal menyetujui: ' + error.message);
+      // Rollback stock if update failed
+      if (freshReq.book_id) {
+        await supabase.rpc('increment_book_available', { _book_id: freshReq.book_id });
+      }
       return;
     }
 
     // Create borrowing record
-    const durationDays = req.duration || 7;
+    const durationDays = freshReq.duration || 7;
     const due = new Date();
     due.setDate(due.getDate() + durationDays);
 
     await (supabase as any).from('borrowings').insert({
       type: 'regular',
-      borrower_name: req.requester_name,
-      borrower_id: req.requester_id,
-      book_id: req.book_id,
-      book_title: req.book_title,
+      borrower_name: freshReq.requester_name,
+      borrower_id: freshReq.requester_id,
+      book_id: freshReq.book_id,
+      book_title: freshReq.book_title,
       borrow_date: new Date().toISOString().split('T')[0],
       due_date: due.toISOString().split('T')[0],
       status: 'borrowed',
       duration: durationDays,
-      class_name: req.class_name,
-      school_id: req.school_id,
+      class_name: freshReq.class_name,
+      school_id: freshReq.school_id,
     });
 
-    // Decrement book available count
-    if (req.book_id) {
-      const { data: book } = await (supabase as any)
-        .from('books')
-        .select('available')
-        .eq('id', req.book_id)
-        .maybeSingle();
-      if (book && book.available > 0) {
-        await (supabase as any)
-          .from('books')
-          .update({ available: book.available - 1 })
-          .eq('id', req.book_id);
-      }
-    }
-
     toast.success('Pengajuan disetujui!');
-    logActivity('Persetujuan Peminjaman', `Pengajuan "${req?.book_title}" oleh ${req?.requester_name} disetujui`, user?.name || '', user?.schoolId);
+    logActivity('Persetujuan Peminjaman', `Pengajuan "${freshReq.book_title}" oleh ${freshReq.requester_name} disetujui`, user?.name || '', user?.schoolId);
   };
 
   const openRejectDialog = (id: string) => {
@@ -160,9 +157,9 @@ const ApprovalPage = () => {
         <div className="search-bar">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari pengajuan..." className="pl-9" />
+            <Input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Cari pengajuan..." className="pl-9" />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); setPage(1); }}>
             <SelectTrigger className="w-40">
               <Filter className="w-3.5 h-3.5 mr-1" /><SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -192,12 +189,12 @@ const ApprovalPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.length === 0 ? (
+                  {paginated.length === 0 ? (
                     <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">
                       <CheckCircle className="w-8 h-8 mx-auto mb-2 text-success opacity-40" />
                       <p className="text-sm">Tidak ada pengajuan</p>
                     </td></tr>
-                  ) : filtered.map((r: any) => (
+                  ) : paginated.map((r: any) => (
                     <tr key={r.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                       <td className="p-3">
                         <div className="flex items-center gap-2">
@@ -244,6 +241,17 @@ const ApprovalPage = () => {
                 </tbody>
               </table>
             </div>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between p-3 border-t">
+                <p className="text-xs text-muted-foreground">{filtered.length} pengajuan</p>
+                <div className="flex gap-1">
+                  {Array.from({ length: Math.min(totalPages, 10) }, (_, i) => (
+                    <Button key={i} variant={page === i + 1 ? 'default' : 'outline'} size="sm" className="w-8 h-8 p-0" onClick={() => setPage(i + 1)}>{i + 1}</Button>
+                  ))}
+                  {totalPages > 10 && <span className="text-xs text-muted-foreground self-center px-1">...</span>}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

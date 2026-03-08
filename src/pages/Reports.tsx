@@ -17,6 +17,8 @@ const Reports = () => {
   const [reportType, setReportType] = useState<ReportType>('borrow');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [page, setPage] = useState(1);
+  const perPage = 20;
 
   const filteredData = useMemo(() => {
     let data = [...borrowings];
@@ -27,7 +29,6 @@ const Reports = () => {
       case 'return': return data.filter(t => t.status === 'returned');
       case 'late': return data.filter(t => t.status === 'late');
       case 'popular': {
-        // Group by book and count
         const bookCount = new Map<string, { title: string; count: number }>();
         data.forEach(t => {
           const existing = bookCount.get(t.book_id || t.book_title) || { title: t.book_title, count: 0 };
@@ -41,6 +42,9 @@ const Reports = () => {
       default: return data;
     }
   }, [borrowings, reportType, dateFrom, dateTo]);
+
+  const totalPages = Math.ceil(filteredData.length / perPage);
+  const paginated = filteredData.slice((page - 1) * perPage, page * perPage);
 
   const handleExport = (format: 'excel') => {
     if (filteredData.length === 0) {
@@ -102,7 +106,7 @@ const Reports = () => {
         <div className="flex flex-wrap gap-3 items-end">
           <div>
             <label className="text-xs font-medium text-muted-foreground block mb-1">Jenis Laporan</label>
-            <Select value={reportType} onValueChange={v => setReportType(v as ReportType)}>
+            <Select value={reportType} onValueChange={v => { setReportType(v as ReportType); setPage(1); }}>
               <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="borrow">Peminjaman</SelectItem>
@@ -114,11 +118,11 @@ const Reports = () => {
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground block mb-1">Dari Tanggal</label>
-            <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-40" />
+            <Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }} className="w-40" />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground block mb-1">Sampai Tanggal</label>
-            <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-40" />
+            <Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }} className="w-40" />
           </div>
         </div>
 
@@ -142,11 +146,11 @@ const Reports = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredData.length === 0 ? (
+                    {paginated.length === 0 ? (
                       <tr><td colSpan={3} className="p-8 text-center text-muted-foreground text-sm">Belum ada data</td></tr>
-                    ) : filteredData.map((d: any, i: number) => (
+                    ) : paginated.map((d: any, i: number) => (
                       <tr key={d.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
-                        <td className="p-3 text-muted-foreground">{i + 1}</td>
+                        <td className="p-3 text-muted-foreground">{(page - 1) * perPage + i + 1}</td>
                         <td className="p-3 font-medium text-foreground">{d.book_title}</td>
                         <td className="p-3 text-center">
                           <Badge variant="outline" className="text-xs">{d.count}x</Badge>
@@ -167,9 +171,9 @@ const Reports = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredData.length === 0 ? (
+                    {paginated.length === 0 ? (
                       <tr><td colSpan={5} className="p-8 text-center text-muted-foreground text-sm">Belum ada data</td></tr>
-                    ) : filteredData.map((t: any) => (
+                    ) : paginated.map((t: any) => (
                       <tr key={t.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                         <td className="p-3 font-medium text-foreground">{t.borrower_name}</td>
                         <td className="p-3 text-foreground">{t.book_title}</td>
@@ -186,6 +190,16 @@ const Reports = () => {
                 </table>
               )}
             </div>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between p-3 border-t">
+                <p className="text-xs text-muted-foreground">{filteredData.length} data</p>
+                <div className="flex gap-1">
+                  {Array.from({ length: Math.min(totalPages, 10) }, (_, i) => (
+                    <Button key={i} variant={page === i + 1 ? 'default' : 'outline'} size="sm" className="w-8 h-8 p-0" onClick={() => setPage(i + 1)}>{i + 1}</Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

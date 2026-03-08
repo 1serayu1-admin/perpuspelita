@@ -13,19 +13,24 @@ import { logActivity } from '@/hooks/useActivityLog';
 const BorrowLesson = () => {
   const { user } = useAuth();
   const { data: borrowings, loading, insert } = useSchoolData<any>('borrowings');
-  const { data: books } = useSchoolData<any>('books');
+  const { data: books, refetch: refetchBooks } = useSchoolData<any>('books');
   const { data: students } = useSchoolData<any>('students');
   const { data: teachers } = useSchoolData<any>('teachers');
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [customDuration, setCustomDuration] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [page, setPage] = useState(1);
+  const perPage = 20;
 
   const lessonBorrowings = borrowings.filter((b: any) => b.type === 'lesson');
   const filtered = lessonBorrowings.filter((t: any) =>
     t.borrower_name.toLowerCase().includes(search.toLowerCase()) ||
     t.book_title.toLowerCase().includes(search.toLowerCase())
   );
+
+  const totalPages = Math.ceil(filtered.length / perPage);
+  const paginated = filtered.slice((page - 1) * perPage, page * perPage);
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -42,6 +47,14 @@ const BorrowLesson = () => {
 
     if (!student?.user_id) {
       toast.error('Siswa ini belum memiliki akun pengguna. Hubungi admin untuk membuat akun terlebih dahulu.');
+      setSaving(false);
+      return;
+    }
+
+    // Atomic decrement - prevents race condition
+    const { data: decremented } = await supabase.rpc('decrement_book_available', { _book_id: bookId });
+    if (!decremented) {
+      toast.error('Stok buku sudah habis');
       setSaving(false);
       return;
     }
@@ -66,16 +79,12 @@ const BorrowLesson = () => {
 
     if (error) {
       toast.error('Gagal mencatat peminjaman: ' + error.message);
+      // Rollback stock
+      await supabase.rpc('increment_book_available', { _book_id: bookId });
     } else {
-      // Decrement book available count
-      if (book && book.available > 0) {
-        await (supabase as any)
-          .from('books')
-          .update({ available: book.available - 1 })
-          .eq('id', bookId);
-      }
       toast.success(`Peminjaman dicatat. Batas: ${duration} menit`);
       logActivity('Peminjaman Pelajaran', `${student?.name} meminjam "${book?.title}" selama ${duration} menit (guru: ${teacher?.name})`, user?.name || '', user?.schoolId);
+      await refetchBooks();
     }
     setSaving(false);
     setDialogOpen(false);
@@ -114,7 +123,7 @@ const BorrowLesson = () => {
                   <select name="bookId" className="w-full h-9 rounded-md border bg-background px-3 text-sm" required>
                     <option value="">-- Pilih buku --</option>
                     {books.filter((b: any) => b.available > 0).map((b: any) => (
-                      <option key={b.id} value={b.id}>{b.title}</option>
+                      <option key={b.id} value={b.id}>{b.title} (tersedia: {b.available})</option>
                     ))}
                   </select>
                 </div>
@@ -157,7 +166,7 @@ const BorrowLesson = () => {
         <div className="search-bar">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari transaksi..." className="pl-9" />
+            <Input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Cari transaksi..." className="pl-9" />
           </div>
         </div>
 
@@ -178,7 +187,7 @@ const BorrowLesson = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((t: any) => (
+                  {paginated.map((t: any) => (
                     <tr key={t.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                       <td className="p-3 font-medium text-foreground">{t.borrower_name}</td>
                       <td className="p-3 hidden md:table-cell text-muted-foreground">{t.class_name}</td>
@@ -192,7 +201,7 @@ const BorrowLesson = () => {
                       </td>
                     </tr>
                   ))}
-                  {filtered.length === 0 && (
+                  {paginated.length === 0 && (
                     <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">
                       <Clock className="w-8 h-8 mx-auto mb-2 opacity-30" />
                       <p className="text-sm">Belum ada peminjaman pelajaran</p>
@@ -201,6 +210,16 @@ const BorrowLesson = () => {
                 </tbody>
               </table>
             </div>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between p-3 border-t">
+                <p className="text-xs text-muted-foreground">{filtered.length} transaksi</p>
+                <div className="flex gap-1">
+                  {Array.from({ length: Math.min(totalPages, 10) }, (_, i) => (
+                    <Button key={i} variant={page === i + 1 ? 'default' : 'outline'} size="sm" className="w-8 h-8 p-0" onClick={() => setPage(i + 1)}>{i + 1}</Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

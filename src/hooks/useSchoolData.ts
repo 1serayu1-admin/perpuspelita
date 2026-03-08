@@ -2,6 +2,54 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+const PAGE_SIZE = 1000;
+
+async function fetchAllRows(
+  table: string,
+  schoolId: string | undefined,
+  isGlobalAdmin: boolean,
+  options?: { orderBy?: string; ascending?: boolean; select?: string }
+) {
+  const allRows: any[] = [];
+  let from = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    let query = (supabase as any)
+      .from(table)
+      .select(options?.select || '*');
+
+    if (schoolId) {
+      query = query.eq('school_id', schoolId);
+    }
+
+    if (options?.orderBy) {
+      query = query.order(options.orderBy, { ascending: options.ascending ?? true });
+    } else {
+      query = query.order('created_at', { ascending: false });
+    }
+
+    query = query.range(from, from + PAGE_SIZE - 1);
+
+    const { data, error } = await query;
+
+    if (error || !data) {
+      hasMore = false;
+      break;
+    }
+
+    allRows.push(...data);
+
+    if (data.length < PAGE_SIZE) {
+      hasMore = false;
+    } else {
+      from += PAGE_SIZE;
+    }
+  }
+
+  return allRows;
+}
+
 export function useSchoolData<T extends Record<string, any>>(
   table: string,
   options?: {
@@ -27,25 +75,8 @@ export function useSchoolData<T extends Record<string, any>>(
       return;
     }
 
-    let query = (supabase as any)
-      .from(table)
-      .select(options?.select || '*');
-
-    if (schoolId) {
-      query = query.eq('school_id', schoolId);
-    }
-
-    if (options?.orderBy) {
-      query = query.order(options.orderBy, { ascending: options.ascending ?? true });
-    } else {
-      query = query.order('created_at', { ascending: false });
-    }
-
-    const { data: result, error } = await query;
-
-    if (!error && result) {
-      setData(result as T[]);
-    }
+    const result = await fetchAllRows(table, schoolId, isGlobalAdmin, options);
+    setData(result as T[]);
     setLoading(false);
   }, [table, schoolId, isGlobalAdmin]);
 
