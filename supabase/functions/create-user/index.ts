@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, password, name, role, school_id } = await req.json();
+    const { email, password, name, role, school_id, username } = await req.json();
 
     if (!email || !password || !name || !role) {
       return new Response(JSON.stringify({ error: "Missing required fields: email, password, name, role" }), {
@@ -93,11 +93,15 @@ Deno.serve(async (req) => {
       .update({ role, school_id: school_id || null })
       .eq("user_id", newUser.user.id);
 
-    // Update profile school_id
-    if (school_id) {
+    // Update profile school_id and username
+    const profileUpdate: Record<string, any> = {};
+    if (school_id) profileUpdate.school_id = school_id;
+    if (username) profileUpdate.username = username;
+
+    if (Object.keys(profileUpdate).length > 0) {
       await adminClient
         .from("profiles")
-        .update({ school_id })
+        .update(profileUpdate)
         .eq("user_id", newUser.user.id);
     }
 

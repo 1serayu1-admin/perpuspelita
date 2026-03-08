@@ -10,12 +10,14 @@ import loginBg from '@/assets/login-bg.jpg';
 
 const Login = () => {
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [isSignup, setIsSignup] = useState(false);
+  const [isSuperAdminLogin, setIsSuperAdminLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, signup } = useAuth();
+  const { login, loginWithUsername, signup } = useAuth();
   const { settings } = useSettings();
   const navigate = useNavigate();
 
@@ -32,12 +34,17 @@ const Login = () => {
           toast.error(result.message);
         }
       } else {
-        const result = await login(email, password);
+        let result;
+        if (isSuperAdminLogin) {
+          result = await login(email, password);
+        } else {
+          result = await loginWithUsername(username, password);
+        }
         if (result.success) {
           toast.success('Login berhasil!');
           navigate('/dashboard');
         } else {
-          toast.error(result.message || 'Email atau password salah');
+          toast.error(result.message || 'Username atau password salah');
         }
       }
     } catch {
@@ -156,10 +163,10 @@ const Login = () => {
           {/* Header */}
           <div className="mb-8 animate-fade-in">
             <h2 className="text-2xl font-bold text-foreground mb-1">
-              {isSignup ? 'Daftar Akun' : 'Masuk'}
+              {isSignup ? 'Daftar Akun' : isSuperAdminLogin ? 'Masuk (Super Admin)' : 'Masuk'}
             </h2>
             <p className="text-sm text-muted-foreground">
-              {isSignup ? 'Buat akun baru untuk mengakses perpustakaan' : 'Masukkan email dan password Anda'}
+              {isSignup ? 'Buat akun baru untuk mengakses perpustakaan' : isSuperAdminLogin ? 'Masukkan email dan password Anda' : 'Masukkan username dan password Anda'}
             </p>
           </div>
 
@@ -178,17 +185,31 @@ const Login = () => {
                 />
               </div>
             )}
-            <div className="relative animate-fade-in" style={{ animationDelay: '0.1s', animationFillMode: 'both' }}>
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="Email"
-                className="pl-10 h-11 rounded-xl transition-shadow focus:shadow-md"
-                required
-              />
-            </div>
+            {isSuperAdminLogin || isSignup ? (
+              <div className="relative animate-fade-in" style={{ animationDelay: '0.1s', animationFillMode: 'both' }}>
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="Email"
+                  className="pl-10 h-11 rounded-xl transition-shadow focus:shadow-md"
+                  required
+                />
+              </div>
+            ) : (
+              <div className="relative animate-fade-in" style={{ animationDelay: '0.1s', animationFillMode: 'both' }}>
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  placeholder="Username"
+                  className="pl-10 h-11 rounded-xl transition-shadow focus:shadow-md"
+                  required
+                />
+              </div>
+            )}
             <div className="relative animate-fade-in" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -229,10 +250,22 @@ const Login = () => {
             </Button>
           </form>
 
+          {/* Toggle super admin / username login */}
+          {!isSignup && (
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => setIsSuperAdminLogin(s => !s)}
+                className="text-xs text-muted-foreground hover:text-primary hover:underline font-medium transition-colors"
+              >
+                {isSuperAdminLogin ? '← Kembali ke login username' : 'Login sebagai Super Admin (Email)'}
+              </button>
+            </div>
+          )}
+
           {/* Toggle signup/login */}
-          <div className="mt-6 text-center">
+          <div className="mt-3 text-center">
             <button
-              onClick={() => setIsSignup(s => !s)}
+              onClick={() => { setIsSignup(s => !s); setIsSuperAdminLogin(false); }}
               className="text-sm text-primary hover:underline font-medium"
             >
               {isSignup ? 'Sudah punya akun? Masuk' : 'Belum punya akun? Daftar'}

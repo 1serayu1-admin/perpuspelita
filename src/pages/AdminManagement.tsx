@@ -55,7 +55,7 @@ const AdminManagement = () => {
   const [selectedSchool, setSelectedSchool] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [addDialog, setAddDialog] = useState(false);
-  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'admin' as AppRole, schoolId: '' });
+  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'admin' as AppRole, schoolId: '', username: '' });
 
   const isGlobalAdmin = user?.appRole === 'global_super_admin';
 
@@ -208,6 +208,7 @@ const AdminManagement = () => {
           name: newUser.name,
           role: newUser.role,
           school_id: newUser.schoolId || null,
+          username: newUser.username || null,
         }),
       });
       const result = await res.json();
@@ -216,7 +217,7 @@ const AdminManagement = () => {
       } else {
         toast.success(`Pengguna ${newUser.name} berhasil dibuat sebagai ${ROLE_LABELS[newUser.role]}`);
         setAddDialog(false);
-        setNewUser({ name: '', email: '', password: '', role: 'admin', schoolId: '' });
+        setNewUser({ name: '', email: '', password: '', role: 'admin', schoolId: '', username: '' });
         await fetchUsers();
       }
     } catch (err: any) {
@@ -423,6 +424,10 @@ const AdminManagement = () => {
             <div>
               <Label>Nama Lengkap</Label>
               <Input value={newUser.name} onChange={e => setNewUser(p => ({ ...p, name: e.target.value }))} placeholder="Masukkan nama..." />
+            </div>
+            <div>
+              <Label>Username (untuk login)</Label>
+              <Input value={newUser.username} onChange={e => setNewUser(p => ({ ...p, username: e.target.value.toLowerCase().replace(/\s/g, '') }))} placeholder="contoh: ahmad.siswa" />
             </div>
             <div>
               <Label>Email</Label>
