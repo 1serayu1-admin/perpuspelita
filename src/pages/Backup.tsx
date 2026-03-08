@@ -147,10 +147,11 @@ const Backup = () => {
       const rows = restorePreview[table];
       if (!rows || rows.length === 0) continue;
 
-      // Clean rows: remove id (let DB generate), set school_id
+      // Clean rows: remove id (let DB generate), set school_id, sanitize fields
       const cleaned = rows.map((row: any) => {
         const { id, created_at, updated_at, ...rest } = row;
-        return { ...rest, school_id: schoolId || rest.school_id };
+        const sanitized = sanitizeRestoreRow(rest);
+        return { ...sanitized, school_id: schoolId || rest.school_id };
       });
 
       // Insert in batches of 50
