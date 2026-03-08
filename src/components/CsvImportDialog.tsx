@@ -59,10 +59,17 @@ export function CsvImportDialog({ open, onOpenChange, title, columns, onImport, 
         toast.error('File CSV harus memiliki header dan minimal 1 baris data');
         return;
       }
-      const headers = parsed[0].map(h => h.toLowerCase().trim());
+      // Map CSV headers to column keys
+      const csvHeaders = parsed[0].map(h => h.toLowerCase().trim());
+      const headerToKey = new Map<number, string>();
+      csvHeaders.forEach((csvH, idx) => {
+        const col = columns.find(c => c.key === csvH || c.label.toLowerCase() === csvH);
+        if (col) headerToKey.set(idx, col.key);
+      });
+
       const rows = parsed.slice(1).map(row => {
         const obj: Record<string, string> = {};
-        headers.forEach((h, i) => { obj[h] = row[i] || ''; });
+        headerToKey.forEach((key, idx) => { obj[key] = row[idx] || ''; });
         return obj;
       }).filter(row => Object.values(row).some(v => v));
       setPreview(rows);
@@ -86,7 +93,12 @@ export function CsvImportDialog({ open, onOpenChange, title, columns, onImport, 
 
   const downloadTemplate = () => {
     const header = columns.map(c => c.label).join(',');
-    const sample = columns.map(c => c.key === 'name' ? 'Contoh Nama' : c.key === 'email' ? 'contoh@email.com' : '').join(',');
+    const sampleData: Record<string, string> = {
+      'nama': 'Ahmad Fauzi', 'nis': '12345', 'nip': '198501012010',
+      'kelas': 'X-A', 'email': 'contoh@email.com',
+      'mata pelajaran': 'Matematika',
+    };
+    const sample = columns.map(c => sampleData[c.key] || c.label).join(',');
     const csv = `${header}\n${sample}`;
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -157,7 +169,7 @@ export function CsvImportDialog({ open, onOpenChange, title, columns, onImport, 
                     {preview.slice(0, 5).map((row, i) => (
                       <tr key={i} className="border-t">
                         {columns.map(c => (
-                          <td key={c.key} className="p-2 text-foreground">{row[c.label.toLowerCase()] || row[c.key] || '-'}</td>
+                          <td key={c.key} className="p-2 text-foreground whitespace-nowrap">{row[c.key] || '-'}</td>
                         ))}
                       </tr>
                     ))}
