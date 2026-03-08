@@ -2,12 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Shield, Search, UserCog, ChevronDown, Building2, Loader2 } from 'lucide-react';
+import { Shield, Search, UserCog, ChevronDown, Building2, Loader2, UserPlus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { AppRole } from '@/lib/types';
 
@@ -53,6 +54,8 @@ const AdminManagement = () => {
   const [schoolDialog, setSchoolDialog] = useState<UserWithRole | null>(null);
   const [selectedSchool, setSelectedSchool] = useState<string>('');
   const [saving, setSaving] = useState(false);
+  const [addDialog, setAddDialog] = useState(false);
+  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'admin' as AppRole, schoolId: '' });
 
   const isGlobalAdmin = user?.appRole === 'global_super_admin';
 
@@ -181,6 +184,47 @@ const AdminManagement = () => {
     await fetchUsers();
   };
 
+  const handleAddUser = async () => {
+    if (!newUser.name || !newUser.email || !newUser.password) {
+      toast.error('Nama, email, dan password wajib diisi');
+      return;
+    }
+    if (newUser.password.length < 6) {
+      toast.error('Password minimal 6 karakter');
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          email: newUser.email,
+          password: newUser.password,
+          name: newUser.name,
+          role: newUser.role,
+          school_id: newUser.schoolId || null,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        toast.error(result.error || 'Gagal membuat pengguna');
+      } else {
+        toast.success(`Pengguna ${newUser.name} berhasil dibuat sebagai ${ROLE_LABELS[newUser.role]}`);
+        setAddDialog(false);
+        setNewUser({ name: '', email: '', password: '', role: 'admin', schoolId: '' });
+        await fetchUsers();
+      }
+    } catch (err: any) {
+      toast.error('Terjadi kesalahan: ' + err.message);
+    }
+    setSaving(false);
+  };
+
   const getAvailableRoles = (): AppRole[] => {
     if (isGlobalAdmin) return ['global_super_admin', 'school_super_admin', 'admin', 'guru', 'siswa'];
     return ['school_super_admin', 'admin', 'guru', 'siswa'];
@@ -217,6 +261,9 @@ const AdminManagement = () => {
           <Badge variant="outline" className="text-xs">
             {filtered.length} pengguna
           </Badge>
+          <Button variant="gradient" size="sm" onClick={() => setAddDialog(true)}>
+            <UserPlus className="w-4 h-4 mr-1" /> Tambah Pengguna
+          </Button>
         </div>
 
         {loading ? (
@@ -359,6 +406,59 @@ const AdminManagement = () => {
             <Button onClick={handleAssignSchool} variant="gradient" className="w-full" disabled={saving || !selectedSchool}>
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Assign Sekolah
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add User Dialog */}
+      <Dialog open={addDialog} onOpenChange={o => { if (!saving) setAddDialog(o); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-primary" /> Tambah Pengguna Baru
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Nama Lengkap</Label>
+              <Input value={newUser.name} onChange={e => setNewUser(p => ({ ...p, name: e.target.value }))} placeholder="Masukkan nama..." />
+            </div>
+            <div>
+              <Label>Email</Label>
+              <Input type="email" value={newUser.email} onChange={e => setNewUser(p => ({ ...p, email: e.target.value }))} placeholder="email@contoh.com" />
+            </div>
+            <div>
+              <Label>Password</Label>
+              <Input type="password" value={newUser.password} onChange={e => setNewUser(p => ({ ...p, password: e.target.value }))} placeholder="Minimal 6 karakter" />
+            </div>
+            <div>
+              <Label>Role</Label>
+              <Select value={newUser.role} onValueChange={v => setNewUser(p => ({ ...p, role: v as AppRole }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {getAvailableRoles().map(role => (
+                    <SelectItem key={role} value={role}>{ROLE_LABELS[role]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {schools.length > 0 && (
+              <div>
+                <Label>Sekolah (opsional)</Label>
+                <Select value={newUser.schoolId} onValueChange={v => setNewUser(p => ({ ...p, schoolId: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Pilih sekolah..." /></SelectTrigger>
+                  <SelectContent>
+                    {schools.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <Button onClick={handleAddUser} variant="gradient" className="w-full" disabled={saving}>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Buat Pengguna
             </Button>
           </div>
         </DialogContent>
