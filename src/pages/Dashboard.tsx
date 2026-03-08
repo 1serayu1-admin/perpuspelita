@@ -40,8 +40,19 @@ const Dashboard = () => {
       query = query.eq('school_id', user.schoolId);
     }
 
-    const { data } = await query;
-    if (data) setRequests(data);
+    // Fetch all pages to avoid 1000-row limit
+    const allData: any[] = [];
+    let from = 0;
+    const PAGE = 1000;
+    let hasMore = true;
+    while (hasMore) {
+      const { data } = await query.range(from, from + PAGE - 1);
+      if (!data || data.length === 0) { hasMore = false; break; }
+      allData.push(...data);
+      if (data.length < PAGE) hasMore = false;
+      else from += PAGE;
+    }
+    setRequests(allData);
     setRequestsLoading(false);
   }, [user, isAdmin]);
 

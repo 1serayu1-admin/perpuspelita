@@ -34,6 +34,15 @@ const Returns = () => {
 
     const item = borrowings.find((b: any) => b.id === id);
 
+    // Increment stock FIRST (atomic), then update borrowing record
+    if (item?.book_id) {
+      const { data: incremented } = await supabase.rpc('increment_book_available', { _book_id: item.book_id });
+      if (!incremented) {
+        toast.error('Gagal mengembalikan stok buku');
+        return;
+      }
+    }
+
     const { error } = await update(id, {
       return_date: now.toISOString().split('T')[0],
       status: 'returned',
@@ -41,12 +50,11 @@ const Returns = () => {
 
     if (error) {
       toast.error('Gagal memproses pengembalian: ' + error.message);
+      // Rollback stock increment
+      if (item?.book_id) {
+        await supabase.rpc('decrement_book_available', { _book_id: item.book_id });
+      }
       return;
-    }
-
-    // Atomic increment book available count
-    if (item?.book_id) {
-      await supabase.rpc('increment_book_available', { _book_id: item.book_id });
     }
 
     toast.success(isLate ? 'Buku dikembalikan (terlambat)' : 'Buku berhasil dikembalikan');

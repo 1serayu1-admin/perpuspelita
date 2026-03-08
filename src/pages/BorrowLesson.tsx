@@ -71,7 +71,7 @@ const BorrowLesson = () => {
       borrow_date: now.toISOString().split('T')[0],
       due_date: due.toISOString(),
       status: 'borrowed',
-      class_name: student?.class_name || '',
+      class_name: '',
       subject: teacher?.subject || '',
       teacher_name: teacher?.name || '',
       duration,
