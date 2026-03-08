@@ -84,8 +84,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
+    const rateCheck = checkRateLimit(email.toLowerCase());
+    if (!rateCheck.allowed) {
+      const secs = Math.ceil((rateCheck.remainingMs || 60000) / 1000);
+      return { success: false, message: `Terlalu banyak percobaan login. Coba lagi dalam ${secs} detik.` };
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { success: false, message: error.message };
+
+    resetRateLimit(email.toLowerCase());
 
     // After login, check IP restriction for user's school
     const profile = await fetchUserProfile(data.user.id);
