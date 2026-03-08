@@ -67,6 +67,7 @@ const Books = () => {
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);
 
   const handleDelete = async (id: string) => {
+    if (!window.confirm('Yakin ingin menghapus buku ini? Tindakan ini tidak dapat dibatalkan.')) return;
     const { error } = await remove(id);
     if (error) toast.error('Gagal menghapus buku');
     else toast.success('Buku berhasil dihapus');
