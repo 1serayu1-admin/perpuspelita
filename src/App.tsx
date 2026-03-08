@@ -18,6 +18,8 @@ import Returns from "./pages/Returns";
 import Reports from "./pages/Reports";
 import ActivityLogPage from "./pages/ActivityLog";
 import SettingsPage from "./pages/Settings";
+import Backup from "./pages/Backup";
+import AdminManagement from "./pages/AdminManagement";
 import NotFound from "./pages/NotFound";
 import { ReactNode } from "react";
 
