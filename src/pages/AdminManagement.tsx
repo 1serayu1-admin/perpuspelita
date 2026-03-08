@@ -185,8 +185,17 @@ const AdminManagement = () => {
   };
 
   const handleAddUser = async () => {
-    if (!newUser.name || !newUser.email || !newUser.password) {
-      toast.error('Nama, email, dan password wajib diisi');
+    const isSuperAdminRole = newUser.role === 'global_super_admin';
+    if (!newUser.name || !newUser.password) {
+      toast.error('Nama dan password wajib diisi');
+      return;
+    }
+    if (isSuperAdminRole && !newUser.email) {
+      toast.error('Email wajib diisi untuk Super Admin');
+      return;
+    }
+    if (!newUser.username && !isSuperAdminRole) {
+      toast.error('Username wajib diisi');
       return;
     }
     if (newUser.password.length < 6) {

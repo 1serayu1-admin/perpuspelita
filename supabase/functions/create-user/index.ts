@@ -56,12 +56,15 @@ Deno.serve(async (req) => {
 
     const { email, password, name, role, school_id, username } = await req.json();
 
-    if (!email || !password || !name || !role) {
-      return new Response(JSON.stringify({ error: "Missing required fields: email, password, name, role" }), {
+    if (!password || !name || !role) {
+      return new Response(JSON.stringify({ error: "Missing required fields: password, name, role" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Generate placeholder email if not provided
+    const userEmail = email || `${username || name.toLowerCase().replace(/\s+/g, '.')}.${Date.now()}@noemail.local`;
 
     // Prevent non-global admins from creating global_super_admin
     if (role === "global_super_admin" && !isGlobalAdmin) {
