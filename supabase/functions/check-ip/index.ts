@@ -31,10 +31,12 @@ Deno.serve(async (req) => {
       req.headers.get("x-real-ip") ||
       "unknown";
 
-    const { school_id } = await req.json();
+    const body = await req.json();
+    const school_id = body?.school_id;
 
-    if (!school_id) {
-      // No school assigned, allow access
+    // Validate school_id is a valid UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!school_id || typeof school_id !== 'string' || !uuidRegex.test(school_id)) {
       return new Response(
         JSON.stringify({ allowed: true, ip: clientIp }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
