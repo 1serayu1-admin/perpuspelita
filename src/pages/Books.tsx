@@ -139,10 +139,18 @@ const Books = () => {
   };
 
   const confirmImport = async () => {
+    let success = 0;
+    let failed = 0;
     for (const book of importPreview) {
-      await insert(book);
+      const { error } = await insert(book);
+      if (error) failed++;
+      else success++;
     }
-    toast.success(`${importPreview.length} buku berhasil diimport`);
+    if (failed === 0) {
+      toast.success(`${success} buku berhasil diimport`);
+    } else {
+      toast.warning(`Import selesai: ${success} berhasil, ${failed} gagal`);
+    }
     setImportPreview([]);
     setImportDialogOpen(false);
   };
