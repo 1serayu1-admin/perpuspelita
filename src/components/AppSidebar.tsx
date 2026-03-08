@@ -1,7 +1,7 @@
 import { NavLink as RouterNavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/contexts/SettingsContext';
-import { BookOpen, LayoutDashboard, Library, Users, GraduationCap, School, BookCopy, RotateCcw, FileBarChart, Activity, FolderTree, ChevronLeft, ChevronRight, LogOut, Settings } from 'lucide-react';
+import { BookOpen, LayoutDashboard, Library, Users, GraduationCap, School, BookCopy, RotateCcw, FileBarChart, Activity, FolderTree, ChevronLeft, ChevronRight, LogOut, Settings, Database, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -18,6 +18,8 @@ const menuItems = [
   { title: 'Pengembalian', icon: RotateCcw, path: '/returns', roles: ['super_admin', 'admin'] },
   { title: 'Laporan', icon: FileBarChart, path: '/reports', roles: ['super_admin', 'admin'] },
   { title: 'Log Aktivitas', icon: Activity, path: '/activity-log', roles: ['super_admin', 'admin'] },
+  { title: 'Backup Data', icon: Database, path: '/backup', roles: ['super_admin', 'admin'] },
+  { title: 'Kelola Admin', icon: Shield, path: '/admin-management', roles: ['super_admin'] },
   { title: 'Pengaturan', icon: Settings, path: '/settings', roles: ['super_admin'] },
 ] as const;
 
