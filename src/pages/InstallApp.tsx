@@ -7,6 +7,8 @@ import { Download, Smartphone, Monitor, CheckCircle, Wifi, WifiOff, Shield, Book
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { QRCodeSVG } from 'qrcode.react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
