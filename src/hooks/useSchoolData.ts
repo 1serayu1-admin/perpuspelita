@@ -47,7 +47,7 @@ export function useSchoolData<T extends Record<string, any>>(
       setData(result as T[]);
     }
     setLoading(false);
-  }, [table, schoolId]);
+  }, [table, schoolId, isGlobalAdmin]);
 
   useEffect(() => {
     fetchData();
