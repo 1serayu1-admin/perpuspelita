@@ -59,10 +59,17 @@ export function CsvImportDialog({ open, onOpenChange, title, columns, onImport, 
         toast.error('File CSV harus memiliki header dan minimal 1 baris data');
         return;
       }
-      const headers = parsed[0].map(h => h.toLowerCase().trim());
+      // Map CSV headers to column keys
+      const csvHeaders = parsed[0].map(h => h.toLowerCase().trim());
+      const headerToKey = new Map<number, string>();
+      csvHeaders.forEach((csvH, idx) => {
+        const col = columns.find(c => c.key === csvH || c.label.toLowerCase() === csvH);
+        if (col) headerToKey.set(idx, col.key);
+      });
+
       const rows = parsed.slice(1).map(row => {
         const obj: Record<string, string> = {};
-        headers.forEach((h, i) => { obj[h] = row[i] || ''; });
+        headerToKey.forEach((key, idx) => { obj[key] = row[idx] || ''; });
         return obj;
       }).filter(row => Object.values(row).some(v => v));
       setPreview(rows);
