@@ -18,6 +18,8 @@ const menuItems = [
   { title: 'Pengembalian', icon: RotateCcw, path: '/returns', roles: ['super_admin', 'admin'] },
   { title: 'Laporan', icon: FileBarChart, path: '/reports', roles: ['super_admin', 'admin'] },
   { title: 'Log Aktivitas', icon: Activity, path: '/activity-log', roles: ['super_admin', 'admin'] },
+  { title: 'Backup Data', icon: Database, path: '/backup', roles: ['super_admin', 'admin'] },
+  { title: 'Kelola Admin', icon: Shield, path: '/admin-management', roles: ['super_admin'] },
   { title: 'Pengaturan', icon: Settings, path: '/settings', roles: ['super_admin'] },
 ] as const;
 
