@@ -45,7 +45,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
     const { data, error } = await (supabase as any)
       .from('schools')
-      .select('name, logo_url, motto, vision')
+      .select('name, logo_url, motto, vision, ip_access_mode, allowed_ips')
       .eq('id', user.schoolId)
       .single();
 
