@@ -98,6 +98,7 @@ const Students = () => {
   };
 
   const handleDelete = async (id: string) => {
+    if (!window.confirm('Yakin ingin menghapus siswa ini? Tindakan ini tidak dapat dibatalkan.')) return;
     const { error } = await remove(id);
     if (error) toast.error('Gagal menghapus siswa');
     else toast.success('Siswa dihapus');

@@ -29,7 +29,7 @@ const Returns = () => {
 
     const { error } = await update(id, {
       return_date: now.toISOString().split('T')[0],
-      status: isLate ? 'late' : 'returned',
+      status: 'returned',
     } as any);
 
     if (error) {
@@ -52,7 +52,7 @@ const Returns = () => {
       }
     }
 
-    toast.success('Buku berhasil dikembalikan');
+    toast.success(isLate ? 'Buku dikembalikan (terlambat)' : 'Buku berhasil dikembalikan');
     logActivity('Pengembalian Buku', `${item?.borrower_name} mengembalikan "${item?.book_title}"${isLate ? ' (terlambat)' : ''}`, user?.name || '', user?.schoolId);
   };
 

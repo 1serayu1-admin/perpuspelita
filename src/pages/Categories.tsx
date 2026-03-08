@@ -41,6 +41,7 @@ const Categories = () => {
   };
 
   const handleDelete = async (id: string) => {
+    if (!window.confirm('Yakin ingin menghapus kategori ini? Buku yang terkait akan kehilangan kategorinya.')) return;
     const { error } = await remove(id);
     if (error) toast.error('Gagal menghapus kategori');
     else toast.success('Kategori dihapus');

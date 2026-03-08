@@ -56,8 +56,31 @@ Deno.serve(async (req) => {
 
     const { email, password, name, role, school_id, username } = await req.json();
 
+    // Validate role is a valid enum value
+    const VALID_ROLES = ['global_super_admin', 'school_super_admin', 'admin', 'guru', 'siswa'];
+    if (!VALID_ROLES.includes(role)) {
+      return new Response(JSON.stringify({ error: `Invalid role: ${role}` }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (!password || !name || !role) {
       return new Response(JSON.stringify({ error: "Missing required fields: password, name, role" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (password.length < 6) {
+      return new Response(JSON.stringify({ error: "Password must be at least 6 characters" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (name.length > 100) {
+      return new Response(JSON.stringify({ error: "Name must be less than 100 characters" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
