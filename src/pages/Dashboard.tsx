@@ -198,7 +198,7 @@ const Dashboard = () => {
               <div className="flex items-center justify-between mb-2">
                 <s.icon className={`w-5 h-5 ${s.color}`} />
               </div>
-              <p className="text-2xl font-bold text-foreground">{s.value}</p>
+              <p className="text-lg sm:text-2xl font-bold text-foreground">{s.value}</p>
               <p className="text-xs text-muted-foreground">{s.label}</p>
             </div>
           ))}
