@@ -410,6 +410,59 @@ const AdminManagement = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Add User Dialog */}
+      <Dialog open={addDialog} onOpenChange={o => { if (!saving) setAddDialog(o); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-primary" /> Tambah Pengguna Baru
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Nama Lengkap</Label>
+              <Input value={newUser.name} onChange={e => setNewUser(p => ({ ...p, name: e.target.value }))} placeholder="Masukkan nama..." />
+            </div>
+            <div>
+              <Label>Email</Label>
+              <Input type="email" value={newUser.email} onChange={e => setNewUser(p => ({ ...p, email: e.target.value }))} placeholder="email@contoh.com" />
+            </div>
+            <div>
+              <Label>Password</Label>
+              <Input type="password" value={newUser.password} onChange={e => setNewUser(p => ({ ...p, password: e.target.value }))} placeholder="Minimal 6 karakter" />
+            </div>
+            <div>
+              <Label>Role</Label>
+              <Select value={newUser.role} onValueChange={v => setNewUser(p => ({ ...p, role: v as AppRole }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {getAvailableRoles().map(role => (
+                    <SelectItem key={role} value={role}>{ROLE_LABELS[role]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {schools.length > 0 && (
+              <div>
+                <Label>Sekolah (opsional)</Label>
+                <Select value={newUser.schoolId} onValueChange={v => setNewUser(p => ({ ...p, schoolId: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Pilih sekolah..." /></SelectTrigger>
+                  <SelectContent>
+                    {schools.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <Button onClick={handleAddUser} variant="gradient" className="w-full" disabled={saving}>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Buat Pengguna
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 };
