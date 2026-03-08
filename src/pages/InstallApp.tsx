@@ -204,14 +204,14 @@ const InstallApp = () => {
 
           <div className="flex flex-col items-center gap-4 p-6 rounded-xl border bg-white">
             <QRCodeSVG
-              value={window.location.origin}
+              value={`${window.location.origin}/login`}
               size={180}
               level="H"
               includeMargin
               bgColor="#ffffff"
               fgColor="#000000"
             />
-            <p className="text-xs text-muted-foreground text-center break-all">{window.location.origin}</p>
+            <p className="text-xs text-muted-foreground text-center break-all">{window.location.origin}/login</p>
             <p className="text-[10px] text-muted-foreground">Compatible: Android • iOS • HarmonyOS</p>
           </div>
 
