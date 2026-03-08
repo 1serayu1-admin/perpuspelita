@@ -118,7 +118,8 @@ const Teachers = () => {
                 <Button type="submit" variant="gradient" className="w-full">Simpan</Button>
               </form>
             </DialogContent>
-          </Dialog>
+           </Dialog>
+          </div>
         </div>
 
         <div className="search-bar">
