@@ -208,6 +208,7 @@ const AdminManagement = () => {
           name: newUser.name,
           role: newUser.role,
           school_id: newUser.schoolId || null,
+          username: newUser.username || null,
         }),
       });
       const result = await res.json();
