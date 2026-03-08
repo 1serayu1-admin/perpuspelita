@@ -57,6 +57,7 @@ function AppRoutes() {
       <Route path="/admin-management" element={<ProtectedRoute><AdminManagement /></ProtectedRoute>} />
       <Route path="/borrow-request" element={<ProtectedRoute><BorrowRequestPage /></ProtectedRoute>} />
       <Route path="/approval" element={<ProtectedRoute><ApprovalPage /></ProtectedRoute>} />
+      <Route path="/install" element={<ProtectedRoute><InstallApp /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
