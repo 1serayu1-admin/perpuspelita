@@ -2,7 +2,7 @@ import { NavLink as RouterNavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useBorrowRequests } from '@/contexts/BorrowRequestContext';
-import { BookOpen, LayoutDashboard, Library, Users, GraduationCap, School, BookCopy, RotateCcw, FileBarChart, Activity, FolderTree, ChevronLeft, ChevronRight, LogOut, Settings, Database, Shield, Send, ClipboardCheck } from 'lucide-react';
+import { BookOpen, LayoutDashboard, Library, Users, GraduationCap, School, BookCopy, RotateCcw, FileBarChart, Activity, FolderTree, ChevronLeft, ChevronRight, LogOut, Settings, Database, Shield, Send, ClipboardCheck, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -23,6 +23,7 @@ const menuItems = [
   { title: 'Log Aktivitas', icon: Activity, path: '/activity-log', roles: ['super_admin', 'admin'] },
   { title: 'Backup Data', icon: Database, path: '/backup', roles: ['super_admin', 'admin'] },
   { title: 'Kelola Admin', icon: Shield, path: '/admin-management', roles: ['super_admin'] },
+  { title: 'Install Aplikasi', icon: Download, path: '/install', roles: ['super_admin'] },
   { title: 'Pengaturan', icon: Settings, path: '/settings', roles: ['super_admin'] },
 ] as const;
 
