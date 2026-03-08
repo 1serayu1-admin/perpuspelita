@@ -40,11 +40,6 @@ const Schools = () => {
   const [motto, setMotto] = useState('');
   const [vision, setVision] = useState('');
 
-  // Only global_super_admin can access
-  if (user?.appRole !== 'global_super_admin') {
-    return <Navigate to="/dashboard" replace />;
-  }
-
   const fetchSchools = async () => {
     setLoading(true);
     const { data, error } = await supabase
@@ -63,6 +58,11 @@ const Schools = () => {
   useEffect(() => {
     fetchSchools();
   }, []);
+
+  // Only global_super_admin can access
+  if (user?.appRole !== 'global_super_admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const openCreate = () => {
     setEditSchool(null);
