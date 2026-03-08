@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
-import { useBorrowRequests } from '@/contexts/BorrowRequestContext';
-import { mockBooks } from '@/data/mockData';
-import { Search, Send, BookOpen, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useSchoolData } from '@/hooks/useSchoolData';
+import { Search, Send, BookOpen, Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,41 +13,62 @@ import { toast } from 'sonner';
 
 const BorrowRequestPage = () => {
   const { user } = useAuth();
-  const { requests, addRequest } = useBorrowRequests();
+  const { data: books } = useSchoolData<any>('books');
+  const [requests, setRequests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedBookId, setSelectedBookId] = useState('');
   const [reason, setReason] = useState('');
   const [duration, setDuration] = useState('7');
+  const [saving, setSaving] = useState(false);
 
-  const myRequests = requests.filter(r => r.requesterId === user?.id || 
-    (user?.role === 'siswa' && r.requesterName === user?.name) ||
-    (user?.role === 'guru' && r.requesterName === user?.name)
+  const fetchRequests = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('borrow_requests')
+      .select('*')
+      .eq('requester_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (!error && data) setRequests(data);
+    setLoading(false);
+  }, [user]);
+
+  useEffect(() => { fetchRequests(); }, [fetchRequests]);
+
+  const filteredRequests = requests.filter((r: any) =>
+    r.book_title.toLowerCase().includes(search.toLowerCase())
   );
 
-  const filteredRequests = myRequests.filter(r =>
-    r.bookTitle.toLowerCase().includes(search.toLowerCase())
-  );
+  const availableBooks = books.filter((b: any) => b.available > 0);
 
-  const availableBooks = mockBooks.filter(b => b.available > 0);
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const book = mockBooks.find(b => b.id === selectedBookId);
-    if (!book || !user) return;
+    if (!user) return;
+    setSaving(true);
 
-    addRequest({
-      requesterId: user.id,
-      requesterName: user.name,
-      requesterRole: user.role as 'siswa' | 'guru',
-      bookId: book.id,
-      bookTitle: book.title,
+    const book = books.find((b: any) => b.id === selectedBookId);
+    if (!book) { setSaving(false); return; }
+
+    const { error } = await supabase.from('borrow_requests').insert({
+      requester_id: user.id,
+      requester_name: user.name,
+      requester_role: user.role === 'super_admin' ? 'guru' : user.role,
+      book_id: book.id,
+      book_title: book.title,
       reason,
-      className: user.role === 'siswa' ? 'X IPA 1' : undefined,
-      duration: user.role === 'guru' ? parseInt(duration) : undefined,
-    });
+      duration: user.role === 'guru' ? parseInt(duration) : null,
+      school_id: user.schoolId || null,
+    } as any);
 
-    toast.success('Pengajuan peminjaman berhasil dikirim! Menunggu persetujuan admin.');
+    if (error) toast.error('Gagal mengirim pengajuan: ' + error.message);
+    else {
+      toast.success('Pengajuan peminjaman berhasil dikirim!');
+      await fetchRequests();
+    }
+    setSaving(false);
     setDialogOpen(false);
     setSelectedBookId('');
     setReason('');
@@ -57,7 +78,7 @@ const BorrowRequestPage = () => {
     pending: { label: 'Menunggu', icon: Clock, className: 'bg-warning/10 text-warning border-warning/20' },
     approved: { label: 'Disetujui', icon: CheckCircle, className: 'bg-success/10 text-success border-success/20' },
     rejected: { label: 'Ditolak', icon: XCircle, className: 'bg-destructive/10 text-destructive border-destructive/20' },
-  };
+  } as const;
 
   return (
     <AppLayout>
@@ -69,42 +90,28 @@ const BorrowRequestPage = () => {
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" variant="gradient">
-                <Send className="w-4 h-4 mr-1" /> Ajukan Pinjam
-              </Button>
+              <Button size="sm" variant="gradient"><Send className="w-4 h-4 mr-1" /> Ajukan Pinjam</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-primary" />
-                  Ajukan Peminjaman Buku
+                  <BookOpen className="w-5 h-5 text-primary" /> Ajukan Peminjaman Buku
                 </DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="text-sm font-medium block mb-1.5">Pilih Buku</label>
-                  <select
-                    value={selectedBookId}
-                    onChange={e => setSelectedBookId(e.target.value)}
-                    className="w-full h-9 rounded-md border bg-background px-3 text-sm"
-                    required
-                  >
+                  <select value={selectedBookId} onChange={e => setSelectedBookId(e.target.value)} className="w-full h-9 rounded-md border bg-background px-3 text-sm" required>
                     <option value="">-- Pilih buku --</option>
-                    {availableBooks.map(b => (
-                      <option key={b.id} value={b.id}>
-                        {b.title} (tersedia: {b.available})
-                      </option>
+                    {availableBooks.map((b: any) => (
+                      <option key={b.id} value={b.id}>{b.title} (tersedia: {b.available})</option>
                     ))}
                   </select>
                 </div>
                 {user?.role === 'guru' && (
                   <div>
                     <label className="text-sm font-medium block mb-1.5">Durasi Pinjam (hari)</label>
-                    <select
-                      value={duration}
-                      onChange={e => setDuration(e.target.value)}
-                      className="w-full h-9 rounded-md border bg-background px-3 text-sm"
-                    >
+                    <select value={duration} onChange={e => setDuration(e.target.value)} className="w-full h-9 rounded-md border bg-background px-3 text-sm">
                       <option value="7">7 hari</option>
                       <option value="10">10 hari</option>
                       <option value="14">14 hari</option>
@@ -113,16 +120,10 @@ const BorrowRequestPage = () => {
                 )}
                 <div>
                   <label className="text-sm font-medium block mb-1.5">Alasan Peminjaman</label>
-                  <Textarea
-                    value={reason}
-                    onChange={e => setReason(e.target.value)}
-                    placeholder="Tuliskan alasan peminjaman buku..."
-                    rows={3}
-                    className="resize-none"
-                    required
-                  />
+                  <Textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="Tuliskan alasan peminjaman buku..." rows={3} className="resize-none" required />
                 </div>
-                <Button type="submit" variant="gradient" className="w-full">
+                <Button type="submit" variant="gradient" className="w-full" disabled={saving}>
+                  {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
                   <Send className="w-4 h-4 mr-1" /> Kirim Pengajuan
                 </Button>
               </form>
@@ -134,7 +135,7 @@ const BorrowRequestPage = () => {
         <div className="grid grid-cols-3 gap-3">
           {(['pending', 'approved', 'rejected'] as const).map(status => {
             const config = statusConfig[status];
-            const count = myRequests.filter(r => r.status === status).length;
+            const count = requests.filter((r: any) => r.status === status).length;
             return (
               <div key={status} className="stat-card flex items-center gap-3">
                 <config.icon className={`w-5 h-5 ${status === 'pending' ? 'text-warning' : status === 'approved' ? 'text-success' : 'text-destructive'}`} />
@@ -154,30 +155,30 @@ const BorrowRequestPage = () => {
           </div>
         </div>
 
-        <div className="data-table-wrapper">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/30">
-                  <th className="text-left p-3 font-medium text-muted-foreground">Buku</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Alasan</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Tanggal</th>
-                  <th className="text-center p-3 font-medium text-muted-foreground">Status</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">Catatan</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRequests.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="p-8 text-center text-muted-foreground">
+        {loading ? (
+          <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+        ) : (
+          <div className="data-table-wrapper">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <th className="text-left p-3 font-medium text-muted-foreground">Buku</th>
+                    <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Alasan</th>
+                    <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Tanggal</th>
+                    <th className="text-center p-3 font-medium text-muted-foreground">Status</th>
+                    <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">Catatan</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRequests.length === 0 ? (
+                    <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">
                       <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-40" />
                       <p className="text-sm">Belum ada pengajuan</p>
                       <p className="text-xs">Klik "Ajukan Pinjam" untuk mulai</p>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredRequests.map(r => {
-                    const config = statusConfig[r.status];
+                    </td></tr>
+                  ) : filteredRequests.map((r: any) => {
+                    const config = statusConfig[r.status as keyof typeof statusConfig] || statusConfig.pending;
                     return (
                       <tr key={r.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                         <td className="p-3">
@@ -185,28 +186,26 @@ const BorrowRequestPage = () => {
                             <div className="w-8 h-10 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
                               <BookOpen className="w-4 h-4 text-primary" />
                             </div>
-                            <span className="font-medium text-foreground">{r.bookTitle}</span>
+                            <span className="font-medium text-foreground">{r.book_title}</span>
                           </div>
                         </td>
                         <td className="p-3 hidden md:table-cell text-muted-foreground text-xs max-w-[200px] truncate">{r.reason}</td>
-                        <td className="p-3 hidden md:table-cell text-muted-foreground">{r.requestDate}</td>
+                        <td className="p-3 hidden md:table-cell text-muted-foreground">{r.request_date}</td>
                         <td className="p-3 text-center">
-                          <Badge className={`text-xs ${config.className}`}>
-                            {config.label}
-                          </Badge>
+                          <Badge className={`text-xs ${config.className}`}>{config.label}</Badge>
                         </td>
                         <td className="p-3 hidden lg:table-cell text-xs text-muted-foreground">
-                          {r.status === 'approved' && r.reviewedBy && `Disetujui oleh ${r.reviewedBy}`}
-                          {r.status === 'rejected' && r.rejectionReason}
+                          {r.status === 'approved' && r.reviewed_by && `Disetujui oleh ${r.reviewed_by}`}
+                          {r.status === 'rejected' && r.rejection_reason}
                         </td>
                       </tr>
                     );
-                  })
-                )}
-              </tbody>
-            </table>
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </AppLayout>
   );
