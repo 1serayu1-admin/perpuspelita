@@ -68,12 +68,17 @@ const Login = () => {
           </div>
 
           <div className="max-w-md">
-            <h1 className="text-4xl font-extrabold text-primary-foreground leading-tight mb-4">
+            <h1 className="text-4xl font-extrabold text-primary-foreground leading-tight mb-3">
               Selamat Datang di<br />
               <span className="text-secondary-foreground/90">{settings.appName || 'Perpustakaan'}</span>
             </h1>
-            <p className="text-primary-foreground/80 text-base leading-relaxed">
-              {settings.schoolName || 'Sistem Manajemen Perpustakaan Sekolah'} — Kelola buku, peminjaman, dan pengembalian dengan mudah.
+            {settings.motto && (
+              <p className="text-primary-foreground font-medium text-lg italic mb-3">
+                "{settings.motto}"
+              </p>
+            )}
+            <p className="text-primary-foreground/80 text-sm leading-relaxed">
+              {settings.visi || 'Sistem Manajemen Perpustakaan Sekolah — Kelola buku, peminjaman, dan pengembalian dengan mudah.'}
             </p>
           </div>
 
