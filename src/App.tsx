@@ -24,6 +24,7 @@ import AdminManagement from "./pages/AdminManagement";
 import BorrowRequestPage from "./pages/BorrowRequestPage";
 import ApprovalPage from "./pages/ApprovalPage";
 import InstallApp from "./pages/InstallApp";
+import Schools from "./pages/Schools";
 import NotFound from "./pages/NotFound";
 import { ReactNode } from "react";
 
