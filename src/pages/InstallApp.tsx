@@ -19,13 +19,10 @@ const InstallApp = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-
-  // Only super_admin can access
-  if (!hasRole(['super_admin'])) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  const isSuperAdmin = hasRole(['super_admin']);
 
   useEffect(() => {
+    if (!isSuperAdmin) return;
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
