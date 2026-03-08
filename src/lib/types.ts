@@ -1,11 +1,36 @@
+// New role type matching database enum
+export type AppRole = 'global_super_admin' | 'school_super_admin' | 'admin' | 'guru' | 'siswa';
+
+// Legacy role type for backward compatibility with existing UI
 export type Role = 'super_admin' | 'admin' | 'guru' | 'siswa';
+
+// Map new roles to legacy roles for UI compatibility
+export function toLegacyRole(role: AppRole): Role {
+  if (role === 'global_super_admin' || role === 'school_super_admin') return 'super_admin';
+  return role;
+}
+
+// Map legacy roles to new roles for permission checks
+export function toAppRoles(legacyRoles: Role[]): AppRole[] {
+  const mapped: AppRole[] = [];
+  for (const r of legacyRoles) {
+    if (r === 'super_admin') {
+      mapped.push('global_super_admin', 'school_super_admin');
+    } else {
+      mapped.push(r);
+    }
+  }
+  return mapped;
+}
 
 export interface User {
   id: string;
   name: string;
   email: string;
   role: Role;
+  appRole: AppRole;
   avatar?: string;
+  schoolId?: string;
 }
 
 export interface Book {
@@ -96,7 +121,7 @@ export interface BorrowRequest {
   reviewedAt?: string;
   rejectionReason?: string;
   className?: string;
-  duration?: number; // days for guru, minutes for lesson
+  duration?: number;
 }
 
 export interface ActivityLog {
