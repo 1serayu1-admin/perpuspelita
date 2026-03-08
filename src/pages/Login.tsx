@@ -186,7 +186,7 @@ const Login = () => {
 
           {/* Footer */}
           <p className="text-center text-[11px] text-muted-foreground mt-8">
-            {settings.schoolName || 'Sistem Perpustakaan Sekolah'} &copy; {new Date().getFullYear()}
+            SERAYU IT SERVICE &copy; {new Date().getFullYear()}
           </p>
         </div>
       </div>
