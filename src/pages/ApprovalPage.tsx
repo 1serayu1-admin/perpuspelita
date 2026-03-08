@@ -38,7 +38,11 @@ const ApprovalPage = () => {
       reviewed_at: new Date().toISOString(),
     } as any);
     if (error) toast.error('Gagal menyetujui: ' + error.message);
-    else toast.success('Pengajuan disetujui!');
+    else {
+      toast.success('Pengajuan disetujui!');
+      const req = requests.find((r: any) => r.id === id);
+      logActivity('Persetujuan Peminjaman', `Pengajuan "${req?.book_title}" oleh ${req?.requester_name} disetujui`, user?.name || '', user?.schoolId);
+    }
   };
 
   const openRejectDialog = (id: string) => {
