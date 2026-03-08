@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { AppRole } from '@/lib/types';
+import { createUserSchema } from '@/lib/validation';
 
 interface UserWithRole {
   userId: string;
