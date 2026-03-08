@@ -207,7 +207,7 @@ const Dashboard = () => {
         {/* Charts - only for admin */}
         {isAdmin && (
           <>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="stat-card lg:col-span-2">
                 <h3 className="text-sm font-semibold text-foreground mb-4">Peminjaman Buku per Bulan</h3>
                 <ResponsiveContainer width="100%" height={250}>
