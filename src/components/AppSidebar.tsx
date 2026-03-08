@@ -2,10 +2,12 @@ import { NavLink as RouterNavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useSchoolData } from '@/hooks/useSchoolData';
-import { BookOpen, LayoutDashboard, Library, Users, GraduationCap, School, BookCopy, RotateCcw, FileBarChart, Activity, FolderTree, ChevronLeft, ChevronRight, LogOut, Settings, Database, Shield, Send, ClipboardCheck, Download, Globe } from 'lucide-react';
+import { BookOpen, LayoutDashboard, Library, Users, GraduationCap, School, BookCopy, RotateCcw, FileBarChart, Activity, FolderTree, ChevronLeft, ChevronRight, LogOut, Settings, Database, Shield, Send, ClipboardCheck, Download, Globe, Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const menuItems = [
   { title: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['super_admin', 'admin', 'guru', 'siswa'] },
@@ -28,23 +30,19 @@ const menuItems = [
   { title: 'Pengaturan', icon: Settings, path: '/settings', roles: ['super_admin'] },
 ] as const;
 
-export function AppSidebar() {
+function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
   const { user, logout, hasRole } = useAuth();
   const { settings } = useSettings();
   const { data: borrowRequests } = useSchoolData<any>('borrow_requests');
   const location = useLocation();
-  const [collapsed, setCollapsed] = useState(false);
 
   const filteredItems = menuItems.filter(item => hasRole(item.roles as any));
   const pendingCount = borrowRequests.filter((r: any) => r.status === 'pending').length;
 
   return (
-    <aside className={cn(
-      "h-screen bg-sidebar flex flex-col border-r border-sidebar-border transition-all duration-300 sticky top-0",
-      collapsed ? "w-16" : "w-64"
-    )}>
+    <>
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 h-16 border-b border-sidebar-border">
+      <div className="flex items-center gap-3 px-4 h-16 border-b border-sidebar-border flex-shrink-0">
         {settings.logoUrl ? (
           <img src={settings.logoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-contain flex-shrink-0" />
         ) : (
@@ -53,9 +51,9 @@ export function AppSidebar() {
           </div>
         )}
         {!collapsed && (
-          <div className="animate-fade-in">
-            <h1 className="text-sm font-bold text-sidebar-foreground">{settings.appName || 'Perpustakaan'}</h1>
-            <p className="text-[10px] text-sidebar-muted">{settings.schoolName || 'Sistem Manajemen'}</p>
+          <div className="animate-fade-in min-w-0">
+            <h1 className="text-sm font-bold text-sidebar-foreground truncate">{settings.appName || 'Perpustakaan'}</h1>
+            <p className="text-[10px] text-sidebar-muted truncate">{settings.schoolName || 'Sistem Manajemen'}</p>
           </div>
         )}
       </div>
@@ -69,6 +67,7 @@ export function AppSidebar() {
             <RouterNavLink
               key={item.path}
               to={item.path}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative",
                 isActive
@@ -77,7 +76,7 @@ export function AppSidebar() {
               )}
             >
               <item.icon className="w-5 h-5 flex-shrink-0" />
-              {!collapsed && <span className="animate-fade-in flex-1">{item.title}</span>}
+              {!collapsed && <span className="animate-fade-in flex-1 truncate">{item.title}</span>}
               {showBadge && (
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 min-w-[18px] h-[18px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
                   {pendingCount}
@@ -88,22 +87,62 @@ export function AppSidebar() {
         })}
       </nav>
 
-      {/* User + Collapse */}
-      <div className="border-t border-sidebar-border p-3 space-y-2">
+      {/* User */}
+      <div className="border-t border-sidebar-border p-3 flex-shrink-0">
         {!collapsed && user && (
           <div className="flex items-center gap-3 px-2 animate-fade-in">
-            <div className="w-8 h-8 rounded-full bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground text-xs font-bold">
+            <div className="w-8 h-8 rounded-full bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground text-xs font-bold flex-shrink-0">
               {user.name.charAt(0)}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-sidebar-foreground truncate">{user.name}</p>
               <p className="text-[10px] text-sidebar-muted capitalize">{user.role.replace('_', ' ')}</p>
             </div>
-            <button onClick={logout} className="text-sidebar-muted hover:text-sidebar-foreground transition-colors">
+            <button onClick={logout} className="text-sidebar-muted hover:text-sidebar-foreground transition-colors flex-shrink-0">
               <LogOut className="w-4 h-4" />
             </button>
           </div>
         )}
+      </div>
+    </>
+  );
+}
+
+export function MobileSidebarTrigger() {
+  const [open, setOpen] = useState(false);
+  const location = useLocation();
+
+  // Close on route change
+  useEffect(() => {
+    setOpen(false);
+  }, [location.pathname]);
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" className="lg:hidden h-9 w-9">
+          <Menu className="w-5 h-5" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="p-0 w-72 bg-sidebar border-sidebar-border [&>button]:hidden">
+        <div className="flex flex-col h-full">
+          <SidebarContent onNavigate={() => setOpen(false)} />
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+export function AppSidebar() {
+  const [collapsed, setCollapsed] = useState(false);
+
+  return (
+    <aside className={cn(
+      "hidden lg:flex h-screen bg-sidebar flex-col border-r border-sidebar-border transition-all duration-300 sticky top-0",
+      collapsed ? "w-16" : "w-64"
+    )}>
+      <SidebarContent collapsed={collapsed} />
+      <div className="border-t border-sidebar-border p-2">
         <Button
           variant="ghost"
           size="sm"
