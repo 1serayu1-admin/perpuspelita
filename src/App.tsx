@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
+import { BorrowRequestProvider } from "@/contexts/BorrowRequestContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Books from "./pages/Books";
@@ -20,6 +21,8 @@ import ActivityLogPage from "./pages/ActivityLog";
 import SettingsPage from "./pages/Settings";
 import Backup from "./pages/Backup";
 import AdminManagement from "./pages/AdminManagement";
+import BorrowRequestPage from "./pages/BorrowRequestPage";
+import ApprovalPage from "./pages/ApprovalPage";
 import NotFound from "./pages/NotFound";
 import { ReactNode } from "react";
 
@@ -51,6 +54,8 @@ function AppRoutes() {
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       <Route path="/backup" element={<ProtectedRoute><Backup /></ProtectedRoute>} />
       <Route path="/admin-management" element={<ProtectedRoute><AdminManagement /></ProtectedRoute>} />
+      <Route path="/borrow-request" element={<ProtectedRoute><BorrowRequestPage /></ProtectedRoute>} />
+      <Route path="/approval" element={<ProtectedRoute><ApprovalPage /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
@@ -64,7 +69,9 @@ const App = () => (
       <BrowserRouter>
         <SettingsProvider>
           <AuthProvider>
-            <AppRoutes />
+            <BorrowRequestProvider>
+              <AppRoutes />
+            </BorrowRequestProvider>
           </AuthProvider>
         </SettingsProvider>
       </BrowserRouter>

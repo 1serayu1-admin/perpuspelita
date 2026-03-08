@@ -70,11 +70,29 @@ export interface BorrowTransaction {
   dueDate: string;
   returnDate?: string;
   status: 'borrowed' | 'returned' | 'late';
-  // lesson-specific
   className?: string;
   subject?: string;
   teacherName?: string;
   duration?: number;
+}
+
+export type RequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface BorrowRequest {
+  id: string;
+  requesterId: string;
+  requesterName: string;
+  requesterRole: 'siswa' | 'guru';
+  bookId: string;
+  bookTitle: string;
+  reason: string;
+  requestDate: string;
+  status: RequestStatus;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
+  className?: string;
+  duration?: number; // days for guru, minutes for lesson
 }
 
 export interface ActivityLog {

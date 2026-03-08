@@ -1,17 +1,25 @@
 import { useState, useRef } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
+import { useAuth } from '@/contexts/AuthContext';
+import { useBorrowRequests } from '@/contexts/BorrowRequestContext';
 import { mockBooks, mockCategories } from '@/data/mockData';
 import { Book } from '@/lib/types';
-import { Search, Plus, Edit, Trash2, BookOpen, Upload, FileSpreadsheet, Download } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, BookOpen, Upload, FileSpreadsheet, Download, Send } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 
 const Books = () => {
+  const { user, hasRole } = useAuth();
+  const { addRequest } = useBorrowRequests();
+  const isReadOnly = user?.role === 'siswa';
+  const canEdit = hasRole(['super_admin', 'admin']);
+  
   const [books, setBooks] = useState<Book[]>(mockBooks);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -20,6 +28,10 @@ const Books = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editBook, setEditBook] = useState<Book | null>(null);
   const [importPreview, setImportPreview] = useState<Book[]>([]);
+  const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
+  const [bookingBook, setBookingBook] = useState<Book | null>(null);
+  const [bookingReason, setBookingReason] = useState('');
+  const [bookingDuration, setBookingDuration] = useState('7');
   const fileRef = useRef<HTMLInputElement>(null);
   const perPage = 6;
 
@@ -66,7 +78,6 @@ const Books = () => {
   const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -75,7 +86,6 @@ const Books = () => {
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(sheet);
-
         const imported: Book[] = jsonData.map((row, i) => ({
           id: `imp${Date.now()}_${i}`,
           title: String(row['Judul'] || row['title'] || ''),
@@ -88,17 +98,10 @@ const Books = () => {
           available: parseInt(row['Tersedia'] || row['available'] || row['Stok'] || row['stock'] || '1'),
           shelfLocation: String(row['Rak'] || row['shelf'] || row['shelfLocation'] || ''),
         })).filter(b => b.title.trim() !== '');
-
-        if (imported.length === 0) {
-          toast.error('File tidak memiliki data yang valid');
-          return;
-        }
-
+        if (imported.length === 0) { toast.error('File tidak memiliki data yang valid'); return; }
         setImportPreview(imported);
         setImportDialogOpen(true);
-      } catch {
-        toast.error('Gagal membaca file. Pastikan format benar.');
-      }
+      } catch { toast.error('Gagal membaca file. Pastikan format benar.'); }
     };
     reader.readAsBinaryString(file);
     if (fileRef.current) fileRef.current.value = '';
@@ -112,14 +115,35 @@ const Books = () => {
   };
 
   const downloadTemplate = () => {
-    const templateData = [
-      { Judul: 'Contoh Buku', Penulis: 'Nama Penulis', Penerbit: 'Nama Penerbit', Tahun: 2024, ISBN: '978-xxx-xxx', Stok: 10, Tersedia: 10, Rak: 'A-01' },
-    ];
+    const templateData = [{ Judul: 'Contoh Buku', Penulis: 'Nama Penulis', Penerbit: 'Nama Penerbit', Tahun: 2024, ISBN: '978-xxx-xxx', Stok: 10, Tersedia: 10, Rak: 'A-01' }];
     const ws = XLSX.utils.json_to_sheet(templateData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Template');
     XLSX.writeFile(wb, 'template_import_buku.xlsx');
     toast.success('Template berhasil diunduh');
+  };
+
+  const handleBooking = (book: Book) => {
+    setBookingBook(book);
+    setBookingReason('');
+    setBookingDialogOpen(true);
+  };
+
+  const submitBooking = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bookingBook || !user) return;
+    addRequest({
+      requesterId: user.id,
+      requesterName: user.name,
+      requesterRole: user.role as 'siswa' | 'guru',
+      bookId: bookingBook.id,
+      bookTitle: bookingBook.title,
+      reason: bookingReason,
+      className: user.role === 'siswa' ? 'X IPA 1' : undefined,
+      duration: user.role === 'guru' ? parseInt(bookingDuration) : undefined,
+    });
+    toast.success('Pengajuan peminjaman berhasil dikirim!');
+    setBookingDialogOpen(false);
   };
 
   const getCategoryName = (id: string) => mockCategories.find(c => c.id === id)?.name || '-';
@@ -128,46 +152,46 @@ const Books = () => {
     <AppLayout>
       <div className="animate-fade-in space-y-4">
         <div className="page-header">
-          <h1 className="page-title">Manajemen Buku</h1>
-          <div className="flex gap-2 flex-wrap">
-            <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-              <Upload className="w-4 h-4 mr-1" /> Import Excel/CSV
-            </Button>
-            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFileImport} className="hidden" />
-            <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditBook(null); }}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="gradient"><Plus className="w-4 h-4 mr-1" /> Tambah Buku</Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>{editBook ? 'Edit Buku' : 'Tambah Buku Baru'}</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSave} className="space-y-3">
-                  <div><label className="text-sm font-medium">Judul</label><Input name="title" defaultValue={editBook?.title} required /></div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><label className="text-sm font-medium">Penulis</label><Input name="author" defaultValue={editBook?.author} required /></div>
-                    <div><label className="text-sm font-medium">Penerbit</label><Input name="publisher" defaultValue={editBook?.publisher} required /></div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><label className="text-sm font-medium">Tahun</label><Input name="year" type="number" defaultValue={editBook?.year || 2024} required /></div>
-                    <div><label className="text-sm font-medium">ISBN</label><Input name="isbn" defaultValue={editBook?.isbn} required /></div>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Kategori</label>
-                    <select name="categoryId" defaultValue={editBook?.categoryId || 'c1'} className="w-full h-9 rounded-md border bg-background px-3 text-sm">
-                      {mockCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div><label className="text-sm font-medium">Stok</label><Input name="stock" type="number" defaultValue={editBook?.stock || 1} required /></div>
-                    <div><label className="text-sm font-medium">Tersedia</label><Input name="available" type="number" defaultValue={editBook?.available || 1} required /></div>
-                    <div><label className="text-sm font-medium">Rak</label><Input name="shelfLocation" defaultValue={editBook?.shelfLocation} required /></div>
-                  </div>
-                  <Button type="submit" variant="gradient" className="w-full">{editBook ? 'Simpan Perubahan' : 'Tambah Buku'}</Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
+          <h1 className="page-title">{isReadOnly ? 'Katalog Buku' : 'Manajemen Buku'}</h1>
+          {canEdit && (
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+                <Upload className="w-4 h-4 mr-1" /> Import Excel/CSV
+              </Button>
+              <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFileImport} className="hidden" />
+              <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditBook(null); }}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="gradient"><Plus className="w-4 h-4 mr-1" /> Tambah Buku</Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                  <DialogHeader><DialogTitle>{editBook ? 'Edit Buku' : 'Tambah Buku Baru'}</DialogTitle></DialogHeader>
+                  <form onSubmit={handleSave} className="space-y-3">
+                    <div><label className="text-sm font-medium">Judul</label><Input name="title" defaultValue={editBook?.title} required /></div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><label className="text-sm font-medium">Penulis</label><Input name="author" defaultValue={editBook?.author} required /></div>
+                      <div><label className="text-sm font-medium">Penerbit</label><Input name="publisher" defaultValue={editBook?.publisher} required /></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><label className="text-sm font-medium">Tahun</label><Input name="year" type="number" defaultValue={editBook?.year || 2024} required /></div>
+                      <div><label className="text-sm font-medium">ISBN</label><Input name="isbn" defaultValue={editBook?.isbn} required /></div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Kategori</label>
+                      <select name="categoryId" defaultValue={editBook?.categoryId || 'c1'} className="w-full h-9 rounded-md border bg-background px-3 text-sm">
+                        {mockCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div><label className="text-sm font-medium">Stok</label><Input name="stock" type="number" defaultValue={editBook?.stock || 1} required /></div>
+                      <div><label className="text-sm font-medium">Tersedia</label><Input name="available" type="number" defaultValue={editBook?.available || 1} required /></div>
+                      <div><label className="text-sm font-medium">Rak</label><Input name="shelfLocation" defaultValue={editBook?.shelfLocation} required /></div>
+                    </div>
+                    <Button type="submit" variant="gradient" className="w-full">{editBook ? 'Simpan Perubahan' : 'Tambah Buku'}</Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
         </div>
 
         {/* Import Preview Dialog */}
@@ -181,14 +205,12 @@ const Books = () => {
             </DialogHeader>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/30">
-                    <th className="text-left p-2 font-medium text-muted-foreground">Judul</th>
-                    <th className="text-left p-2 font-medium text-muted-foreground">Penulis</th>
-                    <th className="text-left p-2 font-medium text-muted-foreground">ISBN</th>
-                    <th className="text-center p-2 font-medium text-muted-foreground">Stok</th>
-                  </tr>
-                </thead>
+                <thead><tr className="border-b bg-muted/30">
+                  <th className="text-left p-2 font-medium text-muted-foreground">Judul</th>
+                  <th className="text-left p-2 font-medium text-muted-foreground">Penulis</th>
+                  <th className="text-left p-2 font-medium text-muted-foreground">ISBN</th>
+                  <th className="text-center p-2 font-medium text-muted-foreground">Stok</th>
+                </tr></thead>
                 <tbody>
                   {importPreview.slice(0, 20).map(b => (
                     <tr key={b.id} className="border-b">
@@ -209,6 +231,48 @@ const Books = () => {
           </DialogContent>
         </Dialog>
 
+        {/* Booking Dialog for siswa/guru */}
+        <Dialog open={bookingDialogOpen} onOpenChange={setBookingDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Send className="w-5 h-5 text-primary" />
+                Ajukan Peminjaman
+              </DialogTitle>
+            </DialogHeader>
+            {bookingBook && (
+              <form onSubmit={submitBooking} className="space-y-4">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border">
+                  <div className="w-10 h-12 rounded bg-primary/10 flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground text-sm">{bookingBook.title}</p>
+                    <p className="text-xs text-muted-foreground">{bookingBook.author} • Tersedia: {bookingBook.available}</p>
+                  </div>
+                </div>
+                {user?.role === 'guru' && (
+                  <div>
+                    <label className="text-sm font-medium block mb-1.5">Durasi Pinjam (hari)</label>
+                    <select value={bookingDuration} onChange={e => setBookingDuration(e.target.value)} className="w-full h-9 rounded-md border bg-background px-3 text-sm">
+                      <option value="7">7 hari</option>
+                      <option value="10">10 hari</option>
+                      <option value="14">14 hari</option>
+                    </select>
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm font-medium block mb-1.5">Alasan Peminjaman</label>
+                  <Textarea value={bookingReason} onChange={e => setBookingReason(e.target.value)} placeholder="Tuliskan alasan peminjaman..." rows={3} className="resize-none" required />
+                </div>
+                <Button type="submit" variant="gradient" className="w-full">
+                  <Send className="w-4 h-4 mr-1" /> Kirim Pengajuan
+                </Button>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
+
         <div className="search-bar">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -221,9 +285,11 @@ const Books = () => {
               {mockCategories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button size="sm" variant="ghost" onClick={downloadTemplate} className="text-xs">
-            <Download className="w-3.5 h-3.5 mr-1" /> Template
-          </Button>
+          {canEdit && (
+            <Button size="sm" variant="ghost" onClick={downloadTemplate} className="text-xs">
+              <Download className="w-3.5 h-3.5 mr-1" /> Template
+            </Button>
+          )}
         </div>
 
         <div className="data-table-wrapper">
@@ -262,12 +328,23 @@ const Books = () => {
                     <td className="p-3 hidden md:table-cell text-muted-foreground">{b.shelfLocation}</td>
                     <td className="p-3 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => { setEditBook(b); setDialogOpen(true); }}>
-                          <Edit className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(b.id)} className="text-destructive hover:text-destructive">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
+                        {/* Siswa & Guru: only booking button */}
+                        {(user?.role === 'siswa' || user?.role === 'guru') && b.available > 0 && (
+                          <Button variant="outline" size="sm" onClick={() => handleBooking(b)} className="text-primary hover:text-primary">
+                            <Send className="w-3.5 h-3.5 mr-1" /> Pinjam
+                          </Button>
+                        )}
+                        {/* Admin/Super Admin: edit & delete */}
+                        {canEdit && (
+                          <>
+                            <Button variant="ghost" size="sm" onClick={() => { setEditBook(b); setDialogOpen(true); }}>
+                              <Edit className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(b.id)} className="text-destructive hover:text-destructive">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -280,9 +357,7 @@ const Books = () => {
               <p className="text-xs text-muted-foreground">{filtered.length} buku ditemukan</p>
               <div className="flex gap-1">
                 {Array.from({ length: totalPages }, (_, i) => (
-                  <Button key={i} variant={page === i + 1 ? 'default' : 'outline'} size="sm" className="w-8 h-8 p-0" onClick={() => setPage(i + 1)}>
-                    {i + 1}
-                  </Button>
+                  <Button key={i} variant={page === i + 1 ? 'default' : 'outline'} size="sm" className="w-8 h-8 p-0" onClick={() => setPage(i + 1)}>{i + 1}</Button>
                 ))}
               </div>
             </div>
