@@ -268,6 +268,20 @@ const Teachers = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        <CsvImportDialog
+          open={csvOpen}
+          onOpenChange={setCsvOpen}
+          title="Import Guru dari CSV"
+          columns={[
+            { key: 'nama', label: 'Nama', required: true },
+            { key: 'nip', label: 'NIP' },
+            { key: 'mata pelajaran', label: 'Mata Pelajaran' },
+            { key: 'email', label: 'Email' },
+          ]}
+          onImport={handleCsvImport}
+          templateFilename="template-guru.csv"
+        />
       </div>
     </AppLayout>
   );
