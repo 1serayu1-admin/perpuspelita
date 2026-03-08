@@ -163,10 +163,10 @@ const Login = () => {
           {/* Header */}
           <div className="mb-8 animate-fade-in">
             <h2 className="text-2xl font-bold text-foreground mb-1">
-              {isSignup ? 'Daftar Akun' : 'Masuk'}
+              {isSignup ? 'Daftar Akun' : isSuperAdminLogin ? 'Masuk (Super Admin)' : 'Masuk'}
             </h2>
             <p className="text-sm text-muted-foreground">
-              {isSignup ? 'Buat akun baru untuk mengakses perpustakaan' : 'Masukkan email dan password Anda'}
+              {isSignup ? 'Buat akun baru untuk mengakses perpustakaan' : isSuperAdminLogin ? 'Masukkan email dan password Anda' : 'Masukkan username dan password Anda'}
             </p>
           </div>
 
