@@ -237,7 +237,7 @@ const Login = () => {
 
           {/* Footer */}
           <p className="text-center text-[11px] text-muted-foreground mt-8">
-            SERAYU IT SERVICE &copy; {new Date().getFullYear()}
+            &copy; {new Date().getFullYear()} SERAYU IT SERVICE
           </p>
         </div>
       </div>
