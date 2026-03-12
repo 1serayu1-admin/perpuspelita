@@ -547,6 +547,38 @@ const AdminManagement = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={!!resetDialog} onOpenChange={o => !o && setResetDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="w-5 h-5 text-primary" /> Reset Password - {resetDialog?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-lg border bg-accent/30 p-3">
+              <p className="text-xs text-muted-foreground">
+                Password baru akan langsung aktif. Pengguna <strong>{resetDialog?.email}</strong> harus menggunakan password baru untuk login berikutnya.
+              </p>
+            </div>
+            <div>
+              <Label>Password Baru</Label>
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                placeholder="Minimal 6 karakter"
+                minLength={6}
+              />
+            </div>
+            <Button onClick={handleResetPassword} variant="gradient" className="w-full" disabled={saving || newPassword.length < 6}>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Reset Password
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 };
