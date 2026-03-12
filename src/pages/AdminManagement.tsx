@@ -371,7 +371,7 @@ const AdminManagement = () => {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2 pt-1">
+                    <div className="flex gap-2 pt-1 flex-wrap">
                       <Button
                         variant="outline"
                         size="sm"
@@ -384,6 +384,19 @@ const AdminManagement = () => {
                       >
                         <ChevronDown className="w-3 h-3 mr-1" />
                         Ubah Role
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 text-xs h-8"
+                        onClick={() => {
+                          setNewPassword('');
+                          setResetDialog(u);
+                        }}
+                        disabled={u.userId === user?.id}
+                      >
+                        <KeyRound className="w-3 h-3 mr-1" />
+                        Reset Password
                       </Button>
                       {isGlobalAdmin && (
                         <Button
