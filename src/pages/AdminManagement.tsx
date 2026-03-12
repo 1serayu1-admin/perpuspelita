@@ -258,6 +258,40 @@ const AdminManagement = () => {
     setSaving(false);
   };
 
+  const handleResetPassword = async () => {
+    if (!resetDialog || !newPassword) return;
+    if (newPassword.length < 6) {
+      toast.error('Password minimal 6 karakter');
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          user_id: resetDialog.userId,
+          new_password: newPassword,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        toast.error(result.error || 'Gagal mereset password');
+      } else {
+        toast.success(`Password ${resetDialog.name} berhasil direset`);
+        setResetDialog(null);
+        setNewPassword('');
+      }
+    } catch (err: any) {
+      toast.error('Terjadi kesalahan: ' + err.message);
+    }
+    setSaving(false);
+  };
+
   const getAvailableRoles = (): AppRole[] => {
     if (isGlobalAdmin) return ['global_super_admin', 'school_super_admin', 'admin', 'guru', 'siswa'];
     return ['school_super_admin', 'admin', 'guru', 'siswa'];
