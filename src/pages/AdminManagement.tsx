@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Shield, Search, UserCog, ChevronDown, Building2, Loader2, UserPlus } from 'lucide-react';
+import { Shield, Search, UserCog, ChevronDown, Building2, Loader2, UserPlus, KeyRound } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -57,6 +57,8 @@ const AdminManagement = () => {
   const [saving, setSaving] = useState(false);
   const [addDialog, setAddDialog] = useState(false);
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'admin' as AppRole, schoolId: '', username: '' });
+  const [resetDialog, setResetDialog] = useState<UserWithRole | null>(null);
+  const [newPassword, setNewPassword] = useState('');
 
   const isGlobalAdmin = user?.appRole === 'global_super_admin';
 
@@ -256,6 +258,40 @@ const AdminManagement = () => {
     setSaving(false);
   };
 
+  const handleResetPassword = async () => {
+    if (!resetDialog || !newPassword) return;
+    if (newPassword.length < 6) {
+      toast.error('Password minimal 6 karakter');
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          user_id: resetDialog.userId,
+          new_password: newPassword,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        toast.error(result.error || 'Gagal mereset password');
+      } else {
+        toast.success(`Password ${resetDialog.name} berhasil direset`);
+        setResetDialog(null);
+        setNewPassword('');
+      }
+    } catch (err: any) {
+      toast.error('Terjadi kesalahan: ' + err.message);
+    }
+    setSaving(false);
+  };
+
   const getAvailableRoles = (): AppRole[] => {
     if (isGlobalAdmin) return ['global_super_admin', 'school_super_admin', 'admin', 'guru', 'siswa'];
     return ['school_super_admin', 'admin', 'guru', 'siswa'];
@@ -335,7 +371,7 @@ const AdminManagement = () => {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2 pt-1">
+                    <div className="flex gap-2 pt-1 flex-wrap">
                       <Button
                         variant="outline"
                         size="sm"
@@ -348,6 +384,19 @@ const AdminManagement = () => {
                       >
                         <ChevronDown className="w-3 h-3 mr-1" />
                         Ubah Role
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 text-xs h-8"
+                        onClick={() => {
+                          setNewPassword('');
+                          setResetDialog(u);
+                        }}
+                        disabled={u.userId === user?.id}
+                      >
+                        <KeyRound className="w-3 h-3 mr-1" />
+                        Reset Password
                       </Button>
                       {isGlobalAdmin && (
                         <Button
@@ -494,6 +543,38 @@ const AdminManagement = () => {
             <Button onClick={handleAddUser} variant="gradient" className="w-full" disabled={saving}>
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Buat Pengguna
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={!!resetDialog} onOpenChange={o => !o && setResetDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="w-5 h-5 text-primary" /> Reset Password - {resetDialog?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-lg border bg-accent/30 p-3">
+              <p className="text-xs text-muted-foreground">
+                Password baru akan langsung aktif. Pengguna <strong>{resetDialog?.email}</strong> harus menggunakan password baru untuk login berikutnya.
+              </p>
+            </div>
+            <div>
+              <Label>Password Baru</Label>
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                placeholder="Minimal 6 karakter"
+                minLength={6}
+              />
+            </div>
+            <Button onClick={handleResetPassword} variant="gradient" className="w-full" disabled={saving || newPassword.length < 6}>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Reset Password
             </Button>
           </div>
         </DialogContent>

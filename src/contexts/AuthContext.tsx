@@ -107,7 +107,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-ip`,
           {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            },
             body: JSON.stringify({ school_id: profile.schoolId }),
             signal: controller.signal,
           }

@@ -36,9 +36,26 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [settings, setSettings] = useState<SchoolSettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
+  const [resolvedSchoolId, setResolvedSchoolId] = useState<string | null>(null);
 
   const fetchSettings = useCallback(async () => {
-    if (!user?.schoolId) {
+    let schoolId = user?.schoolId || null;
+
+    // For global_super_admin without a school, fetch the first school
+    if (!schoolId && user?.appRole === 'global_super_admin') {
+      const { data: firstSchool } = await (supabase as any)
+        .from('schools')
+        .select('id')
+        .limit(1)
+        .single();
+      if (firstSchool) {
+        schoolId = firstSchool.id;
+      }
+    }
+
+    setResolvedSchoolId(schoolId);
+
+    if (!schoolId) {
       setLoading(false);
       return;
     }
@@ -46,7 +63,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const { data, error } = await (supabase as any)
       .from('schools')
       .select('name, logo_url, motto, vision, ip_access_mode, allowed_ips')
-      .eq('id', user.schoolId)
+      .eq('id', schoolId)
       .single();
 
     if (!error && data) {
@@ -61,7 +78,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       }));
     }
     setLoading(false);
-  }, [user?.schoolId]);
+  }, [user?.schoolId, user?.appRole]);
 
   useEffect(() => {
     fetchSettings();
@@ -71,7 +88,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const next = { ...settings, ...partial };
     setSettings(next);
 
-    if (user?.schoolId) {
+    const targetSchoolId = resolvedSchoolId;
+    if (targetSchoolId) {
       await (supabase as any)
         .from('schools')
         .update({
@@ -82,7 +100,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           ip_access_mode: next.ipAccessMode,
           allowed_ips: next.allowedIps,
         })
-        .eq('id', user.schoolId);
+        .eq('id', targetSchoolId);
     }
   };
 
