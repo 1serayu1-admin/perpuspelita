@@ -49,6 +49,91 @@ export type Database = {
           },
         ]
       }
+      authorized_devices: {
+        Row: {
+          created_at: string
+          device_name: string
+          fingerprint: string
+          id: string
+          is_approved: boolean
+          last_used_at: string | null
+          owner_user_id: string
+          school_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          device_name?: string
+          fingerprint: string
+          id?: string
+          is_approved?: boolean
+          last_used_at?: string | null
+          owner_user_id: string
+          school_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          device_name?: string
+          fingerprint?: string
+          id?: string
+          is_approved?: boolean
+          last_used_at?: string | null
+          owner_user_id?: string
+          school_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "authorized_devices_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      backup_history: {
+        Row: {
+          backup_size: string | null
+          backup_status: string
+          backup_type: string
+          backup_url: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          school_id: string | null
+        }
+        Insert: {
+          backup_size?: string | null
+          backup_status?: string
+          backup_type?: string
+          backup_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          school_id?: string | null
+        }
+        Update: {
+          backup_size?: string | null
+          backup_status?: string
+          backup_type?: string
+          backup_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          school_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "backup_history_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       books: {
         Row: {
           author: string
@@ -438,6 +523,53 @@ export type Database = {
           vision?: string | null
         }
         Relationships: []
+      }
+      security_logs: {
+        Row: {
+          action: string
+          created_at: string
+          detail: string | null
+          device_fingerprint: string | null
+          id: string
+          ip_address: string
+          school_id: string | null
+          status: string
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          detail?: string | null
+          device_fingerprint?: string | null
+          id?: string
+          ip_address?: string
+          school_id?: string | null
+          status?: string
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          detail?: string | null
+          device_fingerprint?: string | null
+          id?: string
+          ip_address?: string
+          school_id?: string | null
+          status?: string
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_logs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       students: {
         Row: {
