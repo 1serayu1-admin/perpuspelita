@@ -742,6 +742,18 @@ export type Database = {
         Returns: boolean
       }
       increment_book_available: { Args: { _book_id: string }; Returns: boolean }
+      insert_security_log: {
+        Args: {
+          _action: string
+          _detail: string
+          _device_fingerprint: string
+          _ip_address: string
+          _school_id?: string
+          _status: string
+          _user_email: string
+        }
+        Returns: undefined
+      }
       is_same_school: {
         Args: { _school_id: string; _user_id: string }
         Returns: boolean
