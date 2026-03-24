@@ -80,6 +80,7 @@ function AppRoutes() {
       <Route path="/approval" element={<ProtectedRoute roles={adminRoles}><ApprovalPage /></ProtectedRoute>} />
       <Route path="/install" element={<ProtectedRoute roles={superOnly}><InstallApp /></ProtectedRoute>} />
       <Route path="/schools" element={<ProtectedRoute roles={superOnly}><Schools /></ProtectedRoute>} />
+      <Route path="/security" element={<ProtectedRoute roles={superOnly}><SecurityPanel /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
