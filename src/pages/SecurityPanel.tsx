@@ -76,7 +76,7 @@ const SecurityPanel = () => {
 
     if (devicesData) {
       // Enrich with profile names
-      const userIds = [...new Set(devicesData.map((d: any) => d.owner_user_id))];
+      const userIds: string[] = [...new Set(devicesData.map((d: any) => d.owner_user_id as string))];
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, name, email')
