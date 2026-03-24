@@ -74,7 +74,7 @@ const Backup = () => {
     });
   };
 
-  const backupJSON = () => {
+  const backupJSON = async () => {
     const allData = {
       books, students, teachers, classes, categories,
       borrowings, borrowRequests, activityLogs,
@@ -89,6 +89,14 @@ const Backup = () => {
     URL.revokeObjectURL(url);
     setLastBackup(new Date().toLocaleString('id-ID'));
     toast.success('Backup JSON berhasil diunduh');
+
+    // Record in backup_history
+    await (supabase as any).from('backup_history').insert({
+      school_id: user?.schoolId || null,
+      backup_type: 'manual_json',
+      backup_status: 'completed',
+      created_by: user?.id || null,
+    });
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
