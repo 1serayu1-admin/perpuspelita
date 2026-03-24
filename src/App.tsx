@@ -27,6 +27,7 @@ import BorrowRequestPage from "./pages/BorrowRequestPage";
 import ApprovalPage from "./pages/ApprovalPage";
 import InstallApp from "./pages/InstallApp";
 import Schools from "./pages/Schools";
+import SecurityPanel from "./pages/SecurityPanel";
 import NotFound from "./pages/NotFound";
 import { ReactNode } from "react";
 
