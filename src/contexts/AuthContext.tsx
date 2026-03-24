@@ -170,6 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Look up email from username
     const { data: email, error: lookupError } = await supabase.rpc('get_email_by_username', { _username: username });
     if (lookupError || !email) {
+      logSecurityEvent('login_failure', 'failure', 'Username tidak ditemukan', username);
       return { success: false, message: 'Username tidak ditemukan' };
     }
     return login(email, password);
