@@ -50,7 +50,7 @@ const Backup = () => {
     XLSX.writeFile(wb, `${filename}.xlsx`);
   };
 
-  const backupAll = () => {
+  const backupAll = async () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(books), 'Buku');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(students), 'Siswa');
@@ -64,9 +64,17 @@ const Backup = () => {
     XLSX.writeFile(wb, `backup_perpustakaan_${dateStr}.xlsx`);
     setLastBackup(new Date().toLocaleString('id-ID'));
     toast.success('Backup lengkap berhasil diunduh');
+
+    // Record in backup_history
+    await (supabase as any).from('backup_history').insert({
+      school_id: user?.schoolId || null,
+      backup_type: 'manual_excel',
+      backup_status: 'completed',
+      created_by: user?.id || null,
+    });
   };
 
-  const backupJSON = () => {
+  const backupJSON = async () => {
     const allData = {
       books, students, teachers, classes, categories,
       borrowings, borrowRequests, activityLogs,
@@ -81,6 +89,14 @@ const Backup = () => {
     URL.revokeObjectURL(url);
     setLastBackup(new Date().toLocaleString('id-ID'));
     toast.success('Backup JSON berhasil diunduh');
+
+    // Record in backup_history
+    await (supabase as any).from('backup_history').insert({
+      school_id: user?.schoolId || null,
+      backup_type: 'manual_json',
+      backup_status: 'completed',
+      created_by: user?.id || null,
+    });
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

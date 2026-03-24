@@ -3,6 +3,8 @@ import { User, Role, AppRole, toLegacyRole } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
 import type { Session } from '@supabase/supabase-js';
 import { checkRateLimit, resetRateLimit } from '@/lib/validation';
+import { logSecurityEvent } from '@/lib/securityLog';
+import { generateDeviceFingerprint, getDeviceName } from '@/lib/fingerprint';
 
 interface AuthContextType {
   user: User | null;
@@ -91,15 +93,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { success: false, message: error.message };
+    if (error) {
+      logSecurityEvent('login_failure', 'failure', error.message, email);
+      return { success: false, message: error.message };
+    }
 
     resetRateLimit(email.toLowerCase());
+
+    // Register device fingerprint
+    const fingerprint = generateDeviceFingerprint();
+    const deviceName = getDeviceName();
+    try {
+      await (supabase as any).from('authorized_devices').upsert({
+        owner_user_id: data.user.id,
+        fingerprint,
+        device_name: deviceName,
+        last_used_at: new Date().toISOString(),
+        school_id: null, // Will be updated after profile fetch
+      }, { onConflict: 'owner_user_id,fingerprint' });
+    } catch { /* non-blocking */ }
 
     // After login, check IP restriction for user's school
     const profile = await fetchUserProfile(data.user.id);
     if (profile?.schoolId) {
+      // Update device school_id
       try {
-        // Add timeout for slow intranet connections (5 seconds)
+        await (supabase as any).from('authorized_devices')
+          .update({ school_id: profile.schoolId })
+          .eq('owner_user_id', data.user.id)
+          .eq('fingerprint', fingerprint);
+      } catch { /* non-blocking */ }
+
+      try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
 
@@ -120,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const result = await res.json();
         if (!result.allowed) {
           await supabase.auth.signOut();
+          logSecurityEvent('blocked_ip', 'blocked', `IP ${result.ip} ditolak`, email, profile.schoolId);
           return {
             success: false,
             message: `Akses ditolak. IP Anda (${result.ip}) tidak diizinkan untuk mengakses sekolah ini.`,
@@ -130,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    logSecurityEvent('login_success', 'success', 'Login berhasil', email, profile?.schoolId);
     return { success: true };
   };
 
@@ -143,6 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Look up email from username
     const { data: email, error: lookupError } = await supabase.rpc('get_email_by_username', { _username: username });
     if (lookupError || !email) {
+      logSecurityEvent('login_failure', 'failure', 'Username tidak ditemukan', username);
       return { success: false, message: 'Username tidak ditemukan' };
     }
     return login(email, password);

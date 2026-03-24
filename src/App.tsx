@@ -27,6 +27,7 @@ import BorrowRequestPage from "./pages/BorrowRequestPage";
 import ApprovalPage from "./pages/ApprovalPage";
 import InstallApp from "./pages/InstallApp";
 import Schools from "./pages/Schools";
+import SecurityPanel from "./pages/SecurityPanel";
 import NotFound from "./pages/NotFound";
 import { ReactNode } from "react";
 
@@ -79,6 +80,7 @@ function AppRoutes() {
       <Route path="/approval" element={<ProtectedRoute roles={adminRoles}><ApprovalPage /></ProtectedRoute>} />
       <Route path="/install" element={<ProtectedRoute roles={superOnly}><InstallApp /></ProtectedRoute>} />
       <Route path="/schools" element={<ProtectedRoute roles={superOnly}><Schools /></ProtectedRoute>} />
+      <Route path="/security" element={<ProtectedRoute roles={superOnly}><SecurityPanel /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
