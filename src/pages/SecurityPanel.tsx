@@ -76,11 +76,12 @@ const SecurityPanel = () => {
 
     if (devicesData) {
       // Enrich with profile names
-      const userIds = Array.from(new Set(devicesData.map((d: any) => String(d.owner_user_id))));
+      const userIds = devicesData.map((d: any) => String(d.owner_user_id));
+      const uniqueIds = userIds.filter((v: string, i: number, a: string[]) => a.indexOf(v) === i);
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, name, email')
-        .in('user_id', userIds);
+        .in('user_id', uniqueIds as string[]);
 
       const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
 
