@@ -3,6 +3,8 @@ import { User, Role, AppRole, toLegacyRole } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
 import type { Session } from '@supabase/supabase-js';
 import { checkRateLimit, resetRateLimit } from '@/lib/validation';
+import { logSecurityEvent } from '@/lib/securityLog';
+import { generateDeviceFingerprint, getDeviceName } from '@/lib/fingerprint';
 
 interface AuthContextType {
   user: User | null;
