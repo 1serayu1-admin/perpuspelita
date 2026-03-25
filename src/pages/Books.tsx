@@ -3,7 +3,7 @@ import { AppLayout } from '@/layouts/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchoolData } from '@/hooks/useSchoolData';
-import { Search, Plus, Edit, Trash2, BookOpen, Upload, FileSpreadsheet, Download, Send } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, BookOpen, Upload, FileSpreadsheet, Download, Send, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -284,39 +284,62 @@ const Books = () => {
         </div>
 
         {/* Import Preview Dialog */}
-        <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+        <Dialog open={importDialogOpen} onOpenChange={(o) => { if (!importing) setImportDialogOpen(o); }}>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <FileSpreadsheet className="w-5 h-5 text-primary" />
-                Pratinjau Import — {importPreview.length} buku
+                {importing ? 'Mengimport Data...' : `Pratinjau Import — ${importPreview.length} buku`}
               </DialogTitle>
             </DialogHeader>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="border-b bg-muted/30">
-                  <th className="text-left p-2 font-medium text-muted-foreground">Judul</th>
-                  <th className="text-left p-2 font-medium text-muted-foreground">Penulis</th>
-                  <th className="text-left p-2 font-medium text-muted-foreground">ISBN</th>
-                  <th className="text-center p-2 font-medium text-muted-foreground">Stok</th>
-                </tr></thead>
-                <tbody>
-                  {importPreview.slice(0, 20).map((b, i) => (
-                    <tr key={i} className="border-b">
-                      <td className="p-2 font-medium text-foreground">{b.title}</td>
-                      <td className="p-2 text-muted-foreground">{b.author}</td>
-                      <td className="p-2 text-muted-foreground font-mono text-xs">{b.isbn}</td>
-                      <td className="p-2 text-center">{b.stock}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {importPreview.length > 20 && <p className="text-xs text-muted-foreground p-2">...dan {importPreview.length - 20} buku lainnya</p>}
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setImportDialogOpen(false)}>Batal</Button>
-              <Button variant="gradient" onClick={confirmImport}>Import {importPreview.length} Buku</Button>
-            </div>
+
+            {importing ? (
+              <div className="space-y-4 py-4">
+                <div className="flex items-center justify-center gap-3">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  <span className="text-sm font-medium text-foreground">
+                    {importProgress.current} / {importProgress.total} buku diproses
+                  </span>
+                </div>
+                <div className="w-full bg-secondary rounded-full h-3 overflow-hidden">
+                  <div
+                    className="h-full bg-primary transition-all duration-300 rounded-full"
+                    style={{ width: `${importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0}%` }}
+                  />
+                </div>
+                <p className="text-xs text-center text-muted-foreground">
+                  Jangan tutup halaman ini selama proses import berlangsung
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead><tr className="border-b bg-muted/30">
+                      <th className="text-left p-2 font-medium text-muted-foreground">Judul</th>
+                      <th className="text-left p-2 font-medium text-muted-foreground">Penulis</th>
+                      <th className="text-left p-2 font-medium text-muted-foreground">ISBN</th>
+                      <th className="text-center p-2 font-medium text-muted-foreground">Stok</th>
+                    </tr></thead>
+                    <tbody>
+                      {importPreview.slice(0, 20).map((b, i) => (
+                        <tr key={i} className="border-b">
+                          <td className="p-2 font-medium text-foreground">{b.title}</td>
+                          <td className="p-2 text-muted-foreground">{b.author}</td>
+                          <td className="p-2 text-muted-foreground font-mono text-xs">{b.isbn}</td>
+                          <td className="p-2 text-center">{b.stock}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {importPreview.length > 20 && <p className="text-xs text-muted-foreground p-2">...dan {importPreview.length - 20} buku lainnya</p>}
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => setImportDialogOpen(false)}>Batal</Button>
+                  <Button variant="gradient" onClick={confirmImport}>Import {importPreview.length} Buku</Button>
+                </div>
+              </>
+            )}
           </DialogContent>
         </Dialog>
 
