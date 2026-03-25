@@ -50,6 +50,8 @@ const Books = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editBook, setEditBook] = useState<DbBook | null>(null);
   const [importPreview, setImportPreview] = useState<any[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
   const [bookingBook, setBookingBook] = useState<DbBook | null>(null);
   const [bookingReason, setBookingReason] = useState('');
@@ -108,6 +110,11 @@ const Books = () => {
     setEditBook(null);
   };
 
+  const safeInt = (val: any, fallback: number): number => {
+    const n = parseInt(val);
+    return isNaN(n) ? fallback : n;
+  };
+
   const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -119,16 +126,19 @@ const Books = () => {
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(sheet);
-        const imported = jsonData.map((row) => ({
-          title: String(row['Judul'] || row['title'] || ''),
-          author: String(row['Penulis'] || row['author'] || ''),
-          publisher: String(row['Penerbit'] || row['publisher'] || ''),
-          year: parseInt(row['Tahun'] || row['year'] || '2024'),
-          isbn: String(row['ISBN'] || row['isbn'] || ''),
-          stock: parseInt(row['Stok'] || row['stock'] || '1'),
-          available: parseInt(row['Tersedia'] || row['available'] || row['Stok'] || row['stock'] || '1'),
-          shelf_location: String(row['Rak'] || row['shelf'] || row['shelfLocation'] || ''),
-        })).filter(b => b.title.trim() !== '');
+        const imported = jsonData.map((row) => {
+          const stock = safeInt(row['Stok'] ?? row['stock'], 1);
+          return {
+            title: String(row['Judul'] || row['title'] || '').trim(),
+            author: String(row['Penulis'] || row['author'] || '').trim(),
+            publisher: String(row['Penerbit'] || row['publisher'] || '').trim(),
+            year: safeInt(row['Tahun'] ?? row['year'], 2024),
+            isbn: String(row['ISBN'] || row['isbn'] || '').trim(),
+            stock,
+            available: safeInt(row['Tersedia'] ?? row['available'], stock),
+            shelf_location: String(row['Rak'] || row['shelf'] || row['shelfLocation'] || '').trim(),
+          };
+        }).filter(b => b.title !== '');
         if (imported.length === 0) { toast.error('File tidak memiliki data yang valid'); return; }
         setImportPreview(imported);
         setImportDialogOpen(true);
@@ -139,13 +149,33 @@ const Books = () => {
   };
 
   const confirmImport = async () => {
+    setImporting(true);
+    const total = importPreview.length;
+    setImportProgress({ current: 0, total });
     let success = 0;
     let failed = 0;
-    for (const book of importPreview) {
-      const { error } = await insert(book);
-      if (error) failed++;
-      else success++;
+    const BATCH_SIZE = 50;
+    const schoolId = user?.schoolId;
+
+    for (let i = 0; i < total; i += BATCH_SIZE) {
+      const batch = importPreview.slice(i, i + BATCH_SIZE).map(b => ({
+        ...b,
+        ...(schoolId ? { school_id: schoolId } : {}),
+      }));
+      const { error } = await (supabase as any).from('books').insert(batch);
+      if (error) {
+        // Fallback: try one-by-one for this batch
+        for (const book of batch) {
+          const { error: singleErr } = await (supabase as any).from('books').insert(book);
+          if (singleErr) failed++;
+          else success++;
+        }
+      } else {
+        success += batch.length;
+      }
+      setImportProgress({ current: Math.min(i + BATCH_SIZE, total), total });
     }
+
     if (failed === 0) {
       toast.success(`${success} buku berhasil diimport`);
     } else {
@@ -153,6 +183,9 @@ const Books = () => {
     }
     setImportPreview([]);
     setImportDialogOpen(false);
+    setImporting(false);
+    setImportProgress({ current: 0, total: 0 });
+    refetch();
   };
 
   const downloadTemplate = () => {
