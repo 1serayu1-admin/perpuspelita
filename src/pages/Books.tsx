@@ -7,6 +7,7 @@ import { Search, Plus, Edit, Trash2, BookOpen, Upload, FileSpreadsheet, Download
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -52,12 +53,24 @@ const Books = () => {
   const [importPreview, setImportPreview] = useState<any[]>([]);
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
+  const [importResult, setImportResult] = useState<{ success: number; failed: number } | null>(null);
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
   const [bookingBook, setBookingBook] = useState<DbBook | null>(null);
   const [bookingReason, setBookingReason] = useState('');
   const [bookingDuration, setBookingDuration] = useState('7');
   const fileRef = useRef<HTMLInputElement>(null);
   const perPage = 6;
+
+  const resetImportState = () => {
+    setImportPreview([]);
+    setImporting(false);
+    setImportProgress({ current: 0, total: 0 });
+    setImportResult(null);
+  };
+
+  const waitForPaint = () => new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
 
   const filtered = books.filter(b => {
     const matchSearch = b.title.toLowerCase().includes(search.toLowerCase()) || b.author.toLowerCase().includes(search.toLowerCase()) || b.isbn.includes(search);
@@ -118,6 +131,7 @@ const Books = () => {
   const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setImportResult(null);
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -149,43 +163,54 @@ const Books = () => {
   };
 
   const confirmImport = async () => {
+    if (importPreview.length === 0 || importing) return;
+
     setImporting(true);
     const total = importPreview.length;
     setImportProgress({ current: 0, total });
+    setImportResult(null);
     let success = 0;
     let failed = 0;
     const BATCH_SIZE = 50;
     const schoolId = user?.schoolId;
 
-    for (let i = 0; i < total; i += BATCH_SIZE) {
-      const batch = importPreview.slice(i, i + BATCH_SIZE).map(b => ({
-        ...b,
-        ...(schoolId ? { school_id: schoolId } : {}),
-      }));
-      const { error } = await (supabase as any).from('books').insert(batch);
-      if (error) {
-        // Fallback: try one-by-one for this batch
-        for (const book of batch) {
-          const { error: singleErr } = await (supabase as any).from('books').insert(book);
-          if (singleErr) failed++;
-          else success++;
-        }
-      } else {
-        success += batch.length;
-      }
-      setImportProgress({ current: Math.min(i + BATCH_SIZE, total), total });
-    }
+    await waitForPaint();
 
-    if (failed === 0) {
-      toast.success(`${success} buku berhasil diimport`);
-    } else {
-      toast.warning(`Import selesai: ${success} berhasil, ${failed} gagal`);
+    try {
+      for (let i = 0; i < total; i += BATCH_SIZE) {
+        const batch = importPreview.slice(i, i + BATCH_SIZE).map(b => ({
+          ...b,
+          ...(schoolId ? { school_id: schoolId } : {}),
+        }));
+        const { error } = await (supabase as any).from('books').insert(batch);
+
+        if (error) {
+          for (const book of batch) {
+            const { error: singleErr } = await (supabase as any).from('books').insert(book);
+            if (singleErr) failed++;
+            else success++;
+          }
+        } else {
+          success += batch.length;
+        }
+
+        setImportProgress({ current: Math.min(i + BATCH_SIZE, total), total });
+        await waitForPaint();
+      }
+
+      setImportResult({ success, failed });
+      if (failed === 0) {
+        toast.success(`${success} buku berhasil diimport`);
+      } else {
+        toast.warning(`Import selesai: ${success} berhasil, ${failed} gagal`);
+      }
+    } catch {
+      setImportResult({ success, failed });
+      toast.error('Terjadi kesalahan saat import buku');
+    } finally {
+      setImporting(false);
+      await refetch();
     }
-    setImportPreview([]);
-    setImportDialogOpen(false);
-    setImporting(false);
-    setImportProgress({ current: 0, total: 0 });
-    refetch();
   };
 
   const downloadTemplate = () => {
@@ -284,12 +309,16 @@ const Books = () => {
         </div>
 
         {/* Import Preview Dialog */}
-        <Dialog open={importDialogOpen} onOpenChange={(o) => { if (!importing) setImportDialogOpen(o); }}>
+        <Dialog open={importDialogOpen} onOpenChange={(o) => {
+          if (importing) return;
+          setImportDialogOpen(o);
+          if (!o) resetImportState();
+        }}>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <FileSpreadsheet className="w-5 h-5 text-primary" />
-                {importing ? 'Mengimport Data...' : `Pratinjau Import — ${importPreview.length} buku`}
+                {importing ? 'Mengimport Data...' : importResult ? 'Hasil Import Buku' : `Pratinjau Import — ${importPreview.length} buku`}
               </DialogTitle>
             </DialogHeader>
 
@@ -301,15 +330,30 @@ const Books = () => {
                     {importProgress.current} / {importProgress.total} buku diproses
                   </span>
                 </div>
-                <div className="w-full bg-secondary rounded-full h-3 overflow-hidden">
-                  <div
-                    className="h-full bg-primary transition-all duration-300 rounded-full"
-                    style={{ width: `${importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0}%` }}
-                  />
-                </div>
+                <Progress value={importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0} />
                 <p className="text-xs text-center text-muted-foreground">
                   Jangan tutup halaman ini selama proses import berlangsung
                 </p>
+              </div>
+            ) : importResult ? (
+              <div className="space-y-4 py-2">
+                <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+                  <p className="text-sm font-medium text-foreground">Import selesai</p>
+                  <div className="flex flex-wrap gap-2 text-sm">
+                    <Badge variant="secondary">Berhasil: {importResult.success}</Badge>
+                    <Badge variant={importResult.failed > 0 ? 'destructive' : 'outline'}>
+                      Gagal: {importResult.failed}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Data buku yang berhasil diimport sudah tersimpan dan daftar buku telah dimuat ulang.
+                  </p>
+                </div>
+                <div className="flex justify-end">
+                  <Button variant="gradient" onClick={() => { setImportDialogOpen(false); resetImportState(); }}>
+                    Tutup
+                  </Button>
+                </div>
               </div>
             ) : (
               <>
@@ -335,7 +379,7 @@ const Books = () => {
                   {importPreview.length > 20 && <p className="text-xs text-muted-foreground p-2">...dan {importPreview.length - 20} buku lainnya</p>}
                 </div>
                 <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => setImportDialogOpen(false)}>Batal</Button>
+                  <Button variant="outline" onClick={() => { setImportDialogOpen(false); resetImportState(); }}>Batal</Button>
                   <Button variant="gradient" onClick={confirmImport}>Import {importPreview.length} Buku</Button>
                 </div>
               </>
