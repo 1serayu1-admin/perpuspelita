@@ -3,7 +3,7 @@ import { AppLayout } from '@/layouts/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchoolData } from '@/hooks/useSchoolData';
-import { Search, Plus, Edit, Trash2, BookOpen, Upload, FileSpreadsheet, Download, Send } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, BookOpen, Upload, FileSpreadsheet, Download, Send, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +50,8 @@ const Books = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editBook, setEditBook] = useState<DbBook | null>(null);
   const [importPreview, setImportPreview] = useState<any[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
   const [bookingBook, setBookingBook] = useState<DbBook | null>(null);
   const [bookingReason, setBookingReason] = useState('');
@@ -108,6 +110,11 @@ const Books = () => {
     setEditBook(null);
   };
 
+  const safeInt = (val: any, fallback: number): number => {
+    const n = parseInt(val);
+    return isNaN(n) ? fallback : n;
+  };
+
   const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -119,16 +126,19 @@ const Books = () => {
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(sheet);
-        const imported = jsonData.map((row) => ({
-          title: String(row['Judul'] || row['title'] || ''),
-          author: String(row['Penulis'] || row['author'] || ''),
-          publisher: String(row['Penerbit'] || row['publisher'] || ''),
-          year: parseInt(row['Tahun'] || row['year'] || '2024'),
-          isbn: String(row['ISBN'] || row['isbn'] || ''),
-          stock: parseInt(row['Stok'] || row['stock'] || '1'),
-          available: parseInt(row['Tersedia'] || row['available'] || row['Stok'] || row['stock'] || '1'),
-          shelf_location: String(row['Rak'] || row['shelf'] || row['shelfLocation'] || ''),
-        })).filter(b => b.title.trim() !== '');
+        const imported = jsonData.map((row) => {
+          const stock = safeInt(row['Stok'] ?? row['stock'], 1);
+          return {
+            title: String(row['Judul'] || row['title'] || '').trim(),
+            author: String(row['Penulis'] || row['author'] || '').trim(),
+            publisher: String(row['Penerbit'] || row['publisher'] || '').trim(),
+            year: safeInt(row['Tahun'] ?? row['year'], 2024),
+            isbn: String(row['ISBN'] || row['isbn'] || '').trim(),
+            stock,
+            available: safeInt(row['Tersedia'] ?? row['available'], stock),
+            shelf_location: String(row['Rak'] || row['shelf'] || row['shelfLocation'] || '').trim(),
+          };
+        }).filter(b => b.title !== '');
         if (imported.length === 0) { toast.error('File tidak memiliki data yang valid'); return; }
         setImportPreview(imported);
         setImportDialogOpen(true);
@@ -139,13 +149,33 @@ const Books = () => {
   };
 
   const confirmImport = async () => {
+    setImporting(true);
+    const total = importPreview.length;
+    setImportProgress({ current: 0, total });
     let success = 0;
     let failed = 0;
-    for (const book of importPreview) {
-      const { error } = await insert(book);
-      if (error) failed++;
-      else success++;
+    const BATCH_SIZE = 50;
+    const schoolId = user?.schoolId;
+
+    for (let i = 0; i < total; i += BATCH_SIZE) {
+      const batch = importPreview.slice(i, i + BATCH_SIZE).map(b => ({
+        ...b,
+        ...(schoolId ? { school_id: schoolId } : {}),
+      }));
+      const { error } = await (supabase as any).from('books').insert(batch);
+      if (error) {
+        // Fallback: try one-by-one for this batch
+        for (const book of batch) {
+          const { error: singleErr } = await (supabase as any).from('books').insert(book);
+          if (singleErr) failed++;
+          else success++;
+        }
+      } else {
+        success += batch.length;
+      }
+      setImportProgress({ current: Math.min(i + BATCH_SIZE, total), total });
     }
+
     if (failed === 0) {
       toast.success(`${success} buku berhasil diimport`);
     } else {
@@ -153,6 +183,9 @@ const Books = () => {
     }
     setImportPreview([]);
     setImportDialogOpen(false);
+    setImporting(false);
+    setImportProgress({ current: 0, total: 0 });
+    refetch();
   };
 
   const downloadTemplate = () => {
@@ -251,39 +284,62 @@ const Books = () => {
         </div>
 
         {/* Import Preview Dialog */}
-        <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+        <Dialog open={importDialogOpen} onOpenChange={(o) => { if (!importing) setImportDialogOpen(o); }}>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <FileSpreadsheet className="w-5 h-5 text-primary" />
-                Pratinjau Import — {importPreview.length} buku
+                {importing ? 'Mengimport Data...' : `Pratinjau Import — ${importPreview.length} buku`}
               </DialogTitle>
             </DialogHeader>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="border-b bg-muted/30">
-                  <th className="text-left p-2 font-medium text-muted-foreground">Judul</th>
-                  <th className="text-left p-2 font-medium text-muted-foreground">Penulis</th>
-                  <th className="text-left p-2 font-medium text-muted-foreground">ISBN</th>
-                  <th className="text-center p-2 font-medium text-muted-foreground">Stok</th>
-                </tr></thead>
-                <tbody>
-                  {importPreview.slice(0, 20).map((b, i) => (
-                    <tr key={i} className="border-b">
-                      <td className="p-2 font-medium text-foreground">{b.title}</td>
-                      <td className="p-2 text-muted-foreground">{b.author}</td>
-                      <td className="p-2 text-muted-foreground font-mono text-xs">{b.isbn}</td>
-                      <td className="p-2 text-center">{b.stock}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {importPreview.length > 20 && <p className="text-xs text-muted-foreground p-2">...dan {importPreview.length - 20} buku lainnya</p>}
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setImportDialogOpen(false)}>Batal</Button>
-              <Button variant="gradient" onClick={confirmImport}>Import {importPreview.length} Buku</Button>
-            </div>
+
+            {importing ? (
+              <div className="space-y-4 py-4">
+                <div className="flex items-center justify-center gap-3">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  <span className="text-sm font-medium text-foreground">
+                    {importProgress.current} / {importProgress.total} buku diproses
+                  </span>
+                </div>
+                <div className="w-full bg-secondary rounded-full h-3 overflow-hidden">
+                  <div
+                    className="h-full bg-primary transition-all duration-300 rounded-full"
+                    style={{ width: `${importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0}%` }}
+                  />
+                </div>
+                <p className="text-xs text-center text-muted-foreground">
+                  Jangan tutup halaman ini selama proses import berlangsung
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead><tr className="border-b bg-muted/30">
+                      <th className="text-left p-2 font-medium text-muted-foreground">Judul</th>
+                      <th className="text-left p-2 font-medium text-muted-foreground">Penulis</th>
+                      <th className="text-left p-2 font-medium text-muted-foreground">ISBN</th>
+                      <th className="text-center p-2 font-medium text-muted-foreground">Stok</th>
+                    </tr></thead>
+                    <tbody>
+                      {importPreview.slice(0, 20).map((b, i) => (
+                        <tr key={i} className="border-b">
+                          <td className="p-2 font-medium text-foreground">{b.title}</td>
+                          <td className="p-2 text-muted-foreground">{b.author}</td>
+                          <td className="p-2 text-muted-foreground font-mono text-xs">{b.isbn}</td>
+                          <td className="p-2 text-center">{b.stock}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {importPreview.length > 20 && <p className="text-xs text-muted-foreground p-2">...dan {importPreview.length - 20} buku lainnya</p>}
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => setImportDialogOpen(false)}>Batal</Button>
+                  <Button variant="gradient" onClick={confirmImport}>Import {importPreview.length} Buku</Button>
+                </div>
+              </>
+            )}
           </DialogContent>
         </Dialog>
 
