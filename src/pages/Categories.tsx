@@ -1,10 +1,16 @@
 import { useState } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
+import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolData } from '@/hooks/useSchoolData';
 import { Plus, Edit, Trash2, FolderTree } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { BulkSelectionToolbar } from '@/components/BulkSelectionToolbar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { batchInsertRecords } from '@/lib/batchImport';
+import { DUMMY_CATEGORY_OPTIONS } from '@/lib/dummyCategories';
+import { useBulkSelection } from '@/hooks/useBulkSelection';
 import { toast } from 'sonner';
 
 interface DbCategory {
@@ -15,9 +21,12 @@ interface DbCategory {
 }
 
 const Categories = () => {
-  const { data: categories, loading, insert, update, remove } = useSchoolData<DbCategory>('categories');
+  const { user } = useAuth();
+  const { data: categories, loading, insert, update, remove, removeMany, refetch } = useSchoolData<DbCategory>('categories');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editCat, setEditCat] = useState<DbCategory | null>(null);
+  const [seeding, setSeeding] = useState(false);
+  const selection = useBulkSelection(categories.map((category) => category.id));
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -47,30 +56,89 @@ const Categories = () => {
     else toast.success('Kategori dihapus');
   };
 
+  const handleBulkDelete = async () => {
+    if (selection.selectedIds.length === 0) return;
+    if (!window.confirm(`Hapus ${selection.selectedIds.length} kategori terpilih?`)) return;
+
+    const { error } = await removeMany(selection.selectedIds);
+    if (error) toast.error('Gagal menghapus kategori terpilih');
+    else {
+      toast.success(`${selection.selectedIds.length} kategori berhasil dihapus`);
+      selection.clear();
+    }
+  };
+
+  const handleSeedDummyCategories = async () => {
+    setSeeding(true);
+    const result = await batchInsertRecords({
+      table: 'categories',
+      rows: DUMMY_CATEGORY_OPTIONS.map((category) => ({
+        ...category,
+        ...(user?.schoolId ? { school_id: user.schoolId } : {}),
+      })),
+    });
+
+    await refetch();
+    setSeeding(false);
+
+    if (result.failed > 0) toast.warning(`Kategori dummy selesai diproses: ${result.success} berhasil, ${result.failed} gagal`);
+    else toast.success('Kategori dummy berhasil ditambahkan');
+  };
+
   return (
     <AppLayout>
       <div className="animate-fade-in space-y-4">
         <div className="page-header">
           <h1 className="page-title">Kategori Buku</h1>
-          <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditCat(null); }}>
-            <DialogTrigger asChild>
-              <Button size="sm"><Plus className="w-4 h-4 mr-1" /> Tambah Kategori</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>{editCat ? 'Edit Kategori' : 'Tambah Kategori'}</DialogTitle></DialogHeader>
-              <form onSubmit={handleSave} className="space-y-3">
-                <div><label className="text-sm font-medium">Nama Kategori</label><Input name="name" defaultValue={editCat?.name} required /></div>
-                <div><label className="text-sm font-medium">Deskripsi</label><Input name="description" defaultValue={editCat?.description || ''} /></div>
-                <Button type="submit" className="w-full">Simpan</Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={handleSeedDummyCategories} disabled={seeding}>
+              Muat Kategori Dummy
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditCat(null); }}>
+              <DialogTrigger asChild>
+                <Button size="sm"><Plus className="w-4 h-4 mr-1" /> Tambah Kategori</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>{editCat ? 'Edit Kategori' : 'Tambah Kategori'}</DialogTitle></DialogHeader>
+                <form onSubmit={handleSave} className="space-y-3">
+                  <div><label className="text-sm font-medium">Nama Kategori</label><Input name="name" defaultValue={editCat?.name} required /></div>
+                  <div><label className="text-sm font-medium">Deskripsi</label><Input name="description" defaultValue={editCat?.description || ''} /></div>
+                  <Button type="submit" className="w-full">Simpan</Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
+
+        <BulkSelectionToolbar
+          selectedCount={selection.selectedIds.length}
+          totalCount={categories.length}
+          allSelected={selection.allSelected}
+          partiallySelected={selection.partiallySelected}
+          onToggleAll={selection.toggleAll}
+          onDelete={handleBulkDelete}
+          selectionLabel="Pilih semua kategori"
+        />
 
         {loading ? (
           <div className="text-center text-muted-foreground py-8">Memuat data...</div>
         ) : categories.length === 0 ? (
-          <div className="text-center text-muted-foreground py-8">Belum ada kategori. Klik "Tambah Kategori" untuk memulai.</div>
+          <div className="rounded-2xl border bg-muted/20 p-6 space-y-4">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Listbox kategori dummy</h2>
+              <p className="text-sm text-muted-foreground">Gunakan daftar ini untuk menyiapkan pilihan kategori buku dengan cepat.</p>
+            </div>
+            <select multiple size={Math.min(DUMMY_CATEGORY_OPTIONS.length, 8)} className="w-full rounded-xl border bg-background px-3 py-2 text-sm" aria-label="Listbox kategori dummy" readOnly>
+              {DUMMY_CATEGORY_OPTIONS.map((category) => (
+                <option key={category.name}>{category.name}</option>
+              ))}
+            </select>
+            <div className="flex justify-end">
+              <Button size="sm" onClick={handleSeedDummyCategories} disabled={seeding}>
+                Gunakan Kategori Dummy
+              </Button>
+            </div>
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {categories.map(c => (
@@ -84,7 +152,8 @@ const Categories = () => {
                     <p className="text-xs text-muted-foreground">{c.description || 'Tidak ada deskripsi'}</p>
                   </div>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex items-center gap-1">
+                  <Checkbox checked={selection.isSelected(c.id)} onCheckedChange={() => selection.toggleOne(c.id)} aria-label={`Pilih ${c.name}`} />
                   <Button variant="ghost" size="sm" onClick={() => { setEditCat(c); setDialogOpen(true); }}><Edit className="w-3.5 h-3.5" /></Button>
                   <Button variant="ghost" size="sm" onClick={() => handleDelete(c.id)} className="text-destructive hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></Button>
                 </div>

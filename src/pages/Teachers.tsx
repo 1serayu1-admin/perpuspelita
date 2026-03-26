@@ -1,14 +1,19 @@
 import { useState } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
+import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolData } from '@/hooks/useSchoolData';
 import { Search, Plus, Edit, Trash2, CreditCard, CalendarDays, Upload } from 'lucide-react';
 import { teacherSchema } from '@/lib/validation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { CsvImportDialog } from '@/components/CsvImportDialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { BulkSelectionToolbar } from '@/components/BulkSelectionToolbar';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
+import { batchInsertRecords } from '@/lib/batchImport';
+import { useBulkSelection } from '@/hooks/useBulkSelection';
 import { toast } from 'sonner';
 import { MemberCard } from '@/components/MemberCard';
 import { format } from 'date-fns';
@@ -29,7 +34,8 @@ interface DbTeacher {
 }
 
 const Teachers = () => {
-  const { data: teachers, loading, insert, update, remove } = useSchoolData<DbTeacher>('teachers');
+  const { user } = useAuth();
+  const { data: teachers, loading, insert, update, remove, removeMany, refetch } = useSchoolData<DbTeacher>('teachers');
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editItem, setEditItem] = useState<DbTeacher | null>(null);
@@ -46,6 +52,9 @@ const Teachers = () => {
   const filtered = teachers.filter(t => t.name.toLowerCase().includes(search.toLowerCase()) || t.nip.includes(search));
   const totalPages = Math.ceil(filtered.length / perPage);
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);
+  const selection = useBulkSelection(paginated.map((teacher) => teacher.id));
+  const toEmailLocalPart = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '') || 'guru';
+  const parseActiveStatus = (value: string) => !['inactive', 'nonaktif', '0', 'false'].includes(value.trim().toLowerCase());
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -90,6 +99,18 @@ const Teachers = () => {
     else toast.success('Guru dihapus');
   };
 
+  const handleBulkDelete = async () => {
+    if (selection.selectedIds.length === 0) return;
+    if (!window.confirm(`Hapus ${selection.selectedIds.length} guru terpilih?`)) return;
+
+    const { error } = await removeMany(selection.selectedIds);
+    if (error) toast.error('Gagal menghapus data guru terpilih');
+    else {
+      toast.success(`${selection.selectedIds.length} guru berhasil dihapus`);
+      selection.clear();
+    }
+  };
+
   const openMembershipDialog = (t: DbTeacher) => {
     setMembershipTarget(t);
     setMemberStart(t.membership_start ? new Date(t.membership_start) : undefined);
@@ -109,18 +130,44 @@ const Teachers = () => {
     setMembershipDialogOpen(false);
   };
 
-  const handleCsvImport = async (rows: Record<string, string>[]) => {
-    let success = 0, failed = 0;
-    for (const row of rows) {
-      const name = row['nama'] || row['name'] || '';
-      const nip = row['nip'] || '';
-      const subject = row['mata pelajaran'] || row['subject'] || '';
-      const email = row['email'] || '';
-      if (!name) { failed++; continue; }
-      const { error } = await insert({ name, nip, subject, email });
-      if (error) failed++; else success++;
-    }
-    return { success, failed };
+  const handleCsvImport = async (
+    rows: Record<string, string>[],
+    options?: { onProgress?: (progress: { current: number; total: number }) => void }
+  ) => {
+    let failed = 0;
+
+    const payloads = rows.reduce<Record<string, any>[]>((result, row) => {
+      const name = String(row['name'] || row['nama'] || '').trim();
+      const nip = String(row['nip'] || '').trim();
+      const subject = String(row['subject'] || row['mata_pelajaran'] || row['mata pelajaran'] || '').trim();
+
+      if (!name || !nip || !subject) {
+        failed++;
+        return result;
+      }
+
+      const email = String(row['email'] || '').trim() || `${toEmailLocalPart(nip || name)}@dummy.local`;
+
+      result.push({
+        name,
+        nip,
+        subject,
+        email,
+        is_active: parseActiveStatus(String(row['status'] || 'active')),
+        ...(user?.schoolId ? { school_id: user.schoolId } : {}),
+      });
+
+      return result;
+    }, []);
+
+    const result = await batchInsertRecords({
+      table: 'teachers',
+      rows: payloads,
+      onProgress: options?.onProgress,
+    });
+
+    await refetch();
+    return { success: result.success, failed: result.failed + failed };
   };
 
   return (
@@ -157,6 +204,16 @@ const Teachers = () => {
           </div>
         </div>
 
+        <BulkSelectionToolbar
+          selectedCount={selection.selectedIds.length}
+          totalCount={paginated.length}
+          allSelected={selection.allSelected}
+          partiallySelected={selection.partiallySelected}
+          onToggleAll={selection.toggleAll}
+          onDelete={handleBulkDelete}
+          selectionLabel="Pilih semua data guru di halaman ini"
+        />
+
         {loading ? (
           <div className="text-center text-muted-foreground py-8">Memuat data...</div>
         ) : (
@@ -165,6 +222,13 @@ const Teachers = () => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/30">
+                    <th className="p-3 text-center font-medium text-muted-foreground">
+                      <Checkbox
+                        checked={selection.allSelected ? true : selection.partiallySelected ? 'indeterminate' : false}
+                        onCheckedChange={(checked) => selection.toggleAll(checked === true)}
+                        aria-label="Pilih semua guru"
+                      />
+                    </th>
                     <th className="text-left p-3 font-medium text-muted-foreground">Nama</th>
                     <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">NIP</th>
                     <th className="text-left p-3 font-medium text-muted-foreground">Mata Pelajaran</th>
@@ -176,9 +240,12 @@ const Teachers = () => {
                 </thead>
                 <tbody>
                   {paginated.length === 0 ? (
-                    <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Belum ada data guru.</td></tr>
+                    <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">Belum ada data guru.</td></tr>
                   ) : paginated.map(t => (
                     <tr key={t.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="p-3 text-center">
+                        <Checkbox checked={selection.isSelected(t.id)} onCheckedChange={() => selection.toggleOne(t.id)} aria-label={`Pilih ${t.name}`} />
+                      </td>
                       <td className="p-3 font-medium text-foreground">{t.name}</td>
                       <td className="p-3 hidden md:table-cell text-muted-foreground font-mono text-xs">{t.nip}</td>
                       <td className="p-3"><Badge variant="outline" className="text-xs">{t.subject}</Badge></td>
@@ -299,13 +366,15 @@ const Teachers = () => {
           onOpenChange={setCsvOpen}
           title="Import Guru dari CSV"
           columns={[
-            { key: 'nama', label: 'Nama', required: true },
-            { key: 'nip', label: 'NIP' },
-            { key: 'mata pelajaran', label: 'Mata Pelajaran' },
-            { key: 'email', label: 'Email' },
+            { key: 'id', label: 'ID', sample: '1' },
+            { key: 'nip', label: 'NIP', required: true, sample: '2001' },
+            { key: 'name', label: 'Name', required: true, aliases: ['nama'], sample: 'Guru 1' },
+            { key: 'subject', label: 'Subject', required: true, aliases: ['mata_pelajaran', 'mata pelajaran'], sample: 'Sejarah' },
+            { key: 'status', label: 'Status', sample: 'active' },
+            { key: 'email', label: 'Email', sample: 'guru2001@dummy.local' },
           ]}
           onImport={handleCsvImport}
-          templateFilename="template-guru.csv"
+          templateFilename="template-guru-dummy.csv"
         />
       </div>
     </AppLayout>

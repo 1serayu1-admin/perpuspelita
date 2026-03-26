@@ -109,5 +109,12 @@ export function useSchoolData<T extends Record<string, any>>(
     return { error };
   };
 
-  return { data, loading, refetch: fetchData, insert, update, remove };
+  const removeMany = async (ids: string[]) => {
+    if (ids.length === 0) return { error: null };
+    const { error } = await (supabase as any).from(table).delete().in('id', ids);
+    if (!error) await fetchData();
+    return { error };
+  };
+
+  return { data, loading, refetch: fetchData, insert, update, remove, removeMany };
 }
