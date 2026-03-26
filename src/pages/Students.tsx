@@ -6,10 +6,14 @@ import { Search, Plus, Edit, Trash2, CreditCard, CalendarDays, Upload } from 'lu
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { CsvImportDialog } from '@/components/CsvImportDialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { BulkSelectionToolbar } from '@/components/BulkSelectionToolbar';
 import { studentSchema } from '@/lib/validation';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
+import { batchInsertRecords } from '@/lib/batchImport';
+import { useBulkSelection } from '@/hooks/useBulkSelection';
 import { toast } from 'sonner';
 import { MemberCard } from '@/components/MemberCard';
 import { format } from 'date-fns';
@@ -37,7 +41,8 @@ interface DbClass {
 }
 
 const Students = () => {
-  const { data: students, loading, insert, update, remove } = useSchoolData<DbStudent>('students');
+  const { user } = useAuth();
+  const { data: students, loading, insert, update, remove, removeMany, refetch } = useSchoolData<DbStudent>('students');
   const { data: classes } = useSchoolData<DbClass>('classes');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -54,9 +59,28 @@ const Students = () => {
   const filtered = students.filter(s => s.name.toLowerCase().includes(search.toLowerCase()) || s.nis.includes(search));
   const totalPages = Math.ceil(filtered.length / perPage);
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);
+  const selection = useBulkSelection(paginated.map((student) => student.id));
 
   const getClassName = (classId: string | null) => classes.find(c => c.id === classId)?.name || '-';
   const getClassMajor = (classId: string | null) => classes.find(c => c.id === classId)?.major || '';
+  const toEmailLocalPart = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '') || 'siswa';
+
+  const resolveClass = (row: Record<string, string>) => {
+    const rawClassId = String(row['class_id'] || row['kelas_id'] || '').trim();
+    if (rawClassId) {
+      const numericClassId = rawClassId.replace(/\D/g, '');
+      const byName = classes.find((classItem) => classItem.name.toLowerCase() === `kelas ${numericClassId}`);
+      if (byName) return byName;
+      const byId = classes.find((classItem) => classItem.id === rawClassId);
+      if (byId) return byId;
+    }
+
+    const rawClassName = String(row['kelas'] || row['class'] || '').trim().toLowerCase();
+    if (!rawClassName) return undefined;
+    return classes.find((classItem) => classItem.name.toLowerCase() === rawClassName);
+  };
+
+  const parseActiveStatus = (value: string) => !['inactive', 'nonaktif', '0', 'false'].includes(value.trim().toLowerCase());
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -104,6 +128,18 @@ const Students = () => {
     else toast.success('Siswa dihapus');
   };
 
+  const handleBulkDelete = async () => {
+    if (selection.selectedIds.length === 0) return;
+    if (!window.confirm(`Hapus ${selection.selectedIds.length} siswa terpilih?`)) return;
+
+    const { error } = await removeMany(selection.selectedIds);
+    if (error) toast.error('Gagal menghapus data siswa terpilih');
+    else {
+      toast.success(`${selection.selectedIds.length} siswa berhasil dihapus`);
+      selection.clear();
+    }
+  };
+
   const openMembershipDialog = (s: DbStudent) => {
     setMembershipTarget(s);
     setMemberStart(s.membership_start ? new Date(s.membership_start) : undefined);
@@ -123,23 +159,44 @@ const Students = () => {
     setMembershipDialogOpen(false);
   };
 
-  const handleCsvImport = async (rows: Record<string, string>[]) => {
-    let success = 0, failed = 0;
-    for (const row of rows) {
-      const name = row['nama'] || row['name'] || '';
-      const nis = row['nis'] || '';
-      const email = row['email'] || '';
-      const className = row['kelas'] || row['class'] || '';
-      const cls = classes.find(c => c.name.toLowerCase() === className.toLowerCase());
-      if (!name) { failed++; continue; }
-      const { error } = await insert({
-        name, nis, email,
-        class_id: cls?.id || null,
-        major: cls?.major || '',
+  const handleCsvImport = async (
+    rows: Record<string, string>[],
+    options?: { onProgress?: (progress: { current: number; total: number }) => void }
+  ) => {
+    let failed = 0;
+
+    const payloads = rows.reduce<Record<string, any>[]>((result, row) => {
+      const name = String(row['name'] || row['nama'] || '').trim();
+      const nis = String(row['nis'] || '').trim();
+      if (!name || !nis) {
+        failed++;
+        return result;
+      }
+
+      const classItem = resolveClass(row);
+      const email = String(row['email'] || '').trim() || `${toEmailLocalPart(nis || name)}@dummy.local`;
+
+      result.push({
+        name,
+        nis,
+        email,
+        class_id: classItem?.id || null,
+        major: classItem?.major || '',
+        is_active: parseActiveStatus(String(row['status'] || 'active')),
+        ...(user?.schoolId ? { school_id: user.schoolId } : {}),
       });
-      if (error) failed++; else success++;
-    }
-    return { success, failed };
+
+      return result;
+    }, []);
+
+    const result = await batchInsertRecords({
+      table: 'students',
+      rows: payloads,
+      onProgress: options?.onProgress,
+    });
+
+    await refetch();
+    return { success: result.success, failed: result.failed + failed };
   };
 
   return (
@@ -182,6 +239,16 @@ const Students = () => {
           </div>
         </div>
 
+        <BulkSelectionToolbar
+          selectedCount={selection.selectedIds.length}
+          totalCount={paginated.length}
+          allSelected={selection.allSelected}
+          partiallySelected={selection.partiallySelected}
+          onToggleAll={selection.toggleAll}
+          onDelete={handleBulkDelete}
+          selectionLabel="Pilih semua data siswa di halaman ini"
+        />
+
         {loading ? (
           <div className="text-center text-muted-foreground py-8">Memuat data...</div>
         ) : (
@@ -190,6 +257,13 @@ const Students = () => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/30">
+                    <th className="p-3 text-center font-medium text-muted-foreground">
+                      <Checkbox
+                        checked={selection.allSelected ? true : selection.partiallySelected ? 'indeterminate' : false}
+                        onCheckedChange={(checked) => selection.toggleAll(checked === true)}
+                        aria-label="Pilih semua siswa"
+                      />
+                    </th>
                     <th className="text-left p-3 font-medium text-muted-foreground">Nama</th>
                     <th className="text-left p-3 font-medium text-muted-foreground">NIS</th>
                     <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Kelas</th>
@@ -201,9 +275,12 @@ const Students = () => {
                 </thead>
                 <tbody>
                   {paginated.length === 0 ? (
-                    <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Belum ada data siswa.</td></tr>
+                    <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">Belum ada data siswa.</td></tr>
                   ) : paginated.map(s => (
                     <tr key={s.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="p-3 text-center">
+                        <Checkbox checked={selection.isSelected(s.id)} onCheckedChange={() => selection.toggleOne(s.id)} aria-label={`Pilih ${s.name}`} />
+                      </td>
                       <td className="p-3 font-medium text-foreground">{s.name}</td>
                       <td className="p-3 text-muted-foreground font-mono text-xs">{s.nis}</td>
                       <td className="p-3 hidden md:table-cell"><Badge variant="outline" className="text-xs">{getClassName(s.class_id)}</Badge></td>
@@ -324,13 +401,16 @@ const Students = () => {
           onOpenChange={setCsvOpen}
           title="Import Siswa dari CSV"
           columns={[
-            { key: 'nama', label: 'Nama', required: true },
-            { key: 'nis', label: 'NIS' },
-            { key: 'kelas', label: 'Kelas' },
-            { key: 'email', label: 'Email' },
+            { key: 'id', label: 'ID', sample: '1' },
+            { key: 'nis', label: 'NIS', required: true, sample: '1001' },
+            { key: 'name', label: 'Name', required: true, aliases: ['nama'], sample: 'Siswa 1' },
+            { key: 'class_id', label: 'Class ID', aliases: ['kelas_id', 'class id'], sample: '1' },
+            { key: 'gender', label: 'Gender', sample: 'L' },
+            { key: 'status', label: 'Status', sample: 'active' },
+            { key: 'email', label: 'Email', sample: 'siswa1001@dummy.local' },
           ]}
           onImport={handleCsvImport}
-          templateFilename="template-siswa.csv"
+          templateFilename="template-siswa-dummy.csv"
         />
       </div>
     </AppLayout>

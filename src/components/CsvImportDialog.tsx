@@ -1,17 +1,33 @@
 import { useState, useRef } from 'react';
-import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Download } from 'lucide-react';
+import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+
+type ImportProgress = { current: number; total: number };
+
+type CsvColumn = {
+  key: string;
+  label: string;
+  required?: boolean;
+  aliases?: string[];
+  sample?: string;
+};
 
 interface CsvImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  columns: { key: string; label: string; required?: boolean }[];
-  onImport: (rows: Record<string, string>[]) => Promise<{ success: number; failed: number }>;
+  columns: CsvColumn[];
+  onImport: (
+    rows: Record<string, string>[],
+    options?: { onProgress?: (progress: ImportProgress) => void }
+  ) => Promise<{ success: number; failed: number }>;
   templateFilename: string;
 }
+
+const normalizeHeader = (value: string) => value.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
 
 function parseCsv(text: string): string[][] {
   const lines = text.split(/\r?\n/).filter(l => l.trim());
@@ -40,12 +56,14 @@ export function CsvImportDialog({ open, onOpenChange, title, columns, onImport, 
   const [preview, setPreview] = useState<Record<string, string>[]>([]);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<{ success: number; failed: number } | null>(null);
+  const [progress, setProgress] = useState<ImportProgress>({ current: 0, total: 0 });
   const inputRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
     setFile(null);
     setPreview([]);
     setResult(null);
+    setProgress({ current: 0, total: 0 });
   };
 
   const handleFile = (f: File) => {
@@ -60,12 +78,21 @@ export function CsvImportDialog({ open, onOpenChange, title, columns, onImport, 
         return;
       }
       // Map CSV headers to column keys
-      const csvHeaders = parsed[0].map(h => h.toLowerCase().trim());
+      const csvHeaders = parsed[0].map(h => normalizeHeader(h));
       const headerToKey = new Map<number, string>();
       csvHeaders.forEach((csvH, idx) => {
-        const col = columns.find(c => c.key === csvH || c.label.toLowerCase() === csvH);
+        const col = columns.find((c) => {
+          const candidates = [c.key, c.label, ...(c.aliases || [])].map(normalizeHeader);
+          return candidates.includes(csvH);
+        });
         if (col) headerToKey.set(idx, col.key);
       });
+
+      const missingRequired = columns.filter((column) => column.required && !Array.from(headerToKey.values()).includes(column.key));
+      if (missingRequired.length > 0) {
+        toast.error(`Kolom wajib tidak ditemukan: ${missingRequired.map((column) => column.label).join(', ')}`);
+        return;
+      }
 
       const rows = parsed.slice(1).map(row => {
         const obj: Record<string, string> = {};
@@ -80,8 +107,9 @@ export function CsvImportDialog({ open, onOpenChange, title, columns, onImport, 
   const handleImport = async () => {
     if (preview.length === 0) return;
     setImporting(true);
+    setProgress({ current: 0, total: preview.length });
     try {
-      const res = await onImport(preview);
+      const res = await onImport(preview, { onProgress: setProgress });
       setResult(res);
       if (res.success > 0) toast.success(`${res.success} data berhasil diimport`);
       if (res.failed > 0) toast.error(`${res.failed} data gagal diimport`);
@@ -98,7 +126,7 @@ export function CsvImportDialog({ open, onOpenChange, title, columns, onImport, 
       'kelas': 'X-A', 'email': 'contoh@email.com',
       'mata pelajaran': 'Matematika',
     };
-    const sample = columns.map(c => sampleData[c.key] || c.label).join(',');
+    const sample = columns.map(c => c.sample || sampleData[c.key] || c.label).join(',');
     const csv = `${header}\n${sample}`;
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -179,6 +207,17 @@ export function CsvImportDialog({ open, onOpenChange, title, columns, onImport, 
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {importing && (
+            <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                Mengupload {progress.current} / {progress.total} data
+              </div>
+              <Progress value={progress.total > 0 ? (progress.current / progress.total) * 100 : 0} />
+              <p className="text-xs text-muted-foreground">Mohon tunggu sampai proses import selesai.</p>
             </div>
           )}
 

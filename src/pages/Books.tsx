@@ -8,12 +8,17 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
+import { BulkSelectionToolbar } from '@/components/BulkSelectionToolbar';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { bookSchema } from '@/lib/validation';
+import { batchInsertRecords } from '@/lib/batchImport';
+import { DUMMY_CATEGORY_OPTIONS } from '@/lib/dummyCategories';
+import { useBulkSelection } from '@/hooks/useBulkSelection';
 
 interface DbBook {
   id: string;
@@ -41,8 +46,8 @@ const Books = () => {
   const isReadOnly = user?.role === 'siswa';
   const canEdit = hasRole(['super_admin', 'admin']);
 
-  const { data: books, loading, insert, update, remove, refetch } = useSchoolData<DbBook>('books');
-  const { data: categories } = useSchoolData<DbCategory>('categories');
+  const { data: books, loading, insert, update, remove, removeMany, refetch } = useSchoolData<DbBook>('books');
+  const { data: categories, refetch: refetchCategories } = useSchoolData<DbCategory>('categories');
 
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -58,6 +63,7 @@ const Books = () => {
   const [bookingBook, setBookingBook] = useState<DbBook | null>(null);
   const [bookingReason, setBookingReason] = useState('');
   const [bookingDuration, setBookingDuration] = useState('7');
+  const [seedingCategories, setSeedingCategories] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const perPage = 6;
 
@@ -68,10 +74,6 @@ const Books = () => {
     setImportResult(null);
   };
 
-  const waitForPaint = () => new Promise<void>((resolve) => {
-    requestAnimationFrame(() => resolve());
-  });
-
   const filtered = books.filter(b => {
     const matchSearch = b.title.toLowerCase().includes(search.toLowerCase()) || b.author.toLowerCase().includes(search.toLowerCase()) || b.isbn.includes(search);
     const matchCat = categoryFilter === 'all' || b.category_id === categoryFilter;
@@ -80,12 +82,42 @@ const Books = () => {
 
   const totalPages = Math.ceil(filtered.length / perPage);
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);
+  const selection = useBulkSelection(paginated.map((book) => book.id));
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Yakin ingin menghapus buku ini? Tindakan ini tidak dapat dibatalkan.')) return;
     const { error } = await remove(id);
     if (error) toast.error('Gagal menghapus buku');
     else toast.success('Buku berhasil dihapus');
+  };
+
+  const handleBulkDelete = async () => {
+    if (selection.selectedIds.length === 0) return;
+    if (!window.confirm(`Hapus ${selection.selectedIds.length} buku terpilih?`)) return;
+
+    const { error } = await removeMany(selection.selectedIds);
+    if (error) toast.error('Gagal menghapus buku terpilih');
+    else {
+      toast.success(`${selection.selectedIds.length} buku berhasil dihapus`);
+      selection.clear();
+    }
+  };
+
+  const handleSeedDummyCategories = async () => {
+    setSeedingCategories(true);
+    const result = await batchInsertRecords({
+      table: 'categories',
+      rows: DUMMY_CATEGORY_OPTIONS.map((category) => ({
+        ...category,
+        ...(user?.schoolId ? { school_id: user.schoolId } : {}),
+      })),
+    });
+
+    await refetchCategories();
+    setSeedingCategories(false);
+
+    if (result.failed > 0) toast.warning(`Kategori dummy diproses: ${result.success} berhasil, ${result.failed} gagal`);
+    else toast.success('Kategori dummy berhasil dimuat');
   };
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -148,6 +180,7 @@ const Books = () => {
             publisher: String(row['Penerbit'] || row['publisher'] || '').trim(),
             year: safeInt(row['Tahun'] ?? row['year'], 2024),
             isbn: String(row['ISBN'] || row['isbn'] || '').trim(),
+            category_name: String(row['Kategori'] || row['category'] || row['category_name'] || '').trim(),
             stock,
             available: safeInt(row['Tersedia'] ?? row['available'], stock),
             shelf_location: String(row['Rak'] || row['shelf'] || row['shelfLocation'] || '').trim(),
@@ -169,43 +202,29 @@ const Books = () => {
     const total = importPreview.length;
     setImportProgress({ current: 0, total });
     setImportResult(null);
-    let success = 0;
-    let failed = 0;
-    const BATCH_SIZE = 50;
     const schoolId = user?.schoolId;
 
-    await waitForPaint();
-
     try {
-      for (let i = 0; i < total; i += BATCH_SIZE) {
-        const batch = importPreview.slice(i, i + BATCH_SIZE).map(b => ({
-          ...b,
-          ...(schoolId ? { school_id: schoolId } : {}),
-        }));
-        const { error } = await (supabase as any).from('books').insert(batch);
+      const payloads = importPreview.map(({ category_name, ...book }) => ({
+        ...book,
+        category_id: categories.find((category) => category.name.toLowerCase() === String(category_name || '').toLowerCase())?.id || null,
+        ...(schoolId ? { school_id: schoolId } : {}),
+      }));
 
-        if (error) {
-          for (const book of batch) {
-            const { error: singleErr } = await (supabase as any).from('books').insert(book);
-            if (singleErr) failed++;
-            else success++;
-          }
-        } else {
-          success += batch.length;
-        }
+      const result = await batchInsertRecords({
+        table: 'books',
+        rows: payloads,
+        onProgress: setImportProgress,
+      });
 
-        setImportProgress({ current: Math.min(i + BATCH_SIZE, total), total });
-        await waitForPaint();
-      }
-
-      setImportResult({ success, failed });
-      if (failed === 0) {
-        toast.success(`${success} buku berhasil diimport`);
+      setImportResult(result);
+      if (result.failed === 0) {
+        toast.success(`${result.success} buku berhasil diimport`);
       } else {
-        toast.warning(`Import selesai: ${success} berhasil, ${failed} gagal`);
+        toast.warning(`Import selesai: ${result.success} berhasil, ${result.failed} gagal`);
       }
     } catch {
-      setImportResult({ success, failed });
+      setImportResult({ success: 0, failed: total });
       toast.error('Terjadi kesalahan saat import buku');
     } finally {
       setImporting(false);
@@ -214,7 +233,7 @@ const Books = () => {
   };
 
   const downloadTemplate = () => {
-    const templateData = [{ Judul: 'Contoh Buku', Penulis: 'Nama Penulis', Penerbit: 'Nama Penerbit', Tahun: 2024, ISBN: '978-xxx-xxx', Stok: 10, Tersedia: 10, Rak: 'A-01' }];
+    const templateData = [{ Judul: 'Contoh Buku', Penulis: 'Nama Penulis', Penerbit: 'Nama Penerbit', Tahun: 2024, ISBN: '978-xxx-xxx', Kategori: DUMMY_CATEGORY_OPTIONS[0].name, Stok: 10, Tersedia: 10, Rak: 'A-01' }];
     const ws = XLSX.utils.json_to_sheet(templateData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Template');
@@ -290,6 +309,14 @@ const Books = () => {
                     </div>
                     <div>
                       <label className="text-sm font-medium">Kategori</label>
+                      {categories.length === 0 && (
+                        <div className="mb-2 rounded-lg border bg-muted/20 p-3">
+                          <p className="text-xs text-muted-foreground mb-2">Belum ada kategori aktif. Muat kategori dummy agar listbox kategori langsung bisa dipakai.</p>
+                          <Button type="button" size="sm" variant="outline" onClick={handleSeedDummyCategories} disabled={seedingCategories}>
+                            Muat Kategori Dummy
+                          </Button>
+                        </div>
+                      )}
                       <select name="categoryId" defaultValue={editBook?.category_id || ''} className="w-full h-9 rounded-md border bg-background px-3 text-sm">
                         <option value="">Pilih Kategori</option>
                         {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -448,6 +475,18 @@ const Books = () => {
           )}
         </div>
 
+        {canEdit && (
+          <BulkSelectionToolbar
+            selectedCount={selection.selectedIds.length}
+            totalCount={paginated.length}
+            allSelected={selection.allSelected}
+            partiallySelected={selection.partiallySelected}
+            onToggleAll={selection.toggleAll}
+            onDelete={handleBulkDelete}
+            selectionLabel="Pilih semua buku di halaman ini"
+          />
+        )}
+
         {loading ? (
           <div className="text-center text-muted-foreground py-8">Memuat data...</div>
         ) : (
@@ -456,6 +495,15 @@ const Books = () => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/30">
+                    {canEdit && (
+                      <th className="p-3 text-center font-medium text-muted-foreground">
+                        <Checkbox
+                          checked={selection.allSelected ? true : selection.partiallySelected ? 'indeterminate' : false}
+                          onCheckedChange={(checked) => selection.toggleAll(checked === true)}
+                          aria-label="Pilih semua buku"
+                        />
+                      </th>
+                    )}
                     <th className="text-left p-3 font-medium text-muted-foreground">Judul</th>
                     <th className="text-left p-3 font-medium text-muted-foreground">Penulis</th>
                     <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Kategori</th>
@@ -468,9 +516,14 @@ const Books = () => {
                 </thead>
                 <tbody>
                   {paginated.length === 0 ? (
-                    <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">Belum ada buku.</td></tr>
+                    <tr><td colSpan={canEdit ? 9 : 8} className="p-8 text-center text-muted-foreground">Belum ada buku.</td></tr>
                   ) : paginated.map(b => (
                     <tr key={b.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                      {canEdit && (
+                        <td className="p-3 text-center">
+                          <Checkbox checked={selection.isSelected(b.id)} onCheckedChange={() => selection.toggleOne(b.id)} aria-label={`Pilih ${b.title}`} />
+                        </td>
+                      )}
                       <td className="p-3">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-10 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
