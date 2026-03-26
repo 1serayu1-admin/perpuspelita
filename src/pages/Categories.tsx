@@ -128,7 +128,7 @@ const Categories = () => {
               <h2 className="text-base font-semibold text-foreground">Listbox kategori dummy</h2>
               <p className="text-sm text-muted-foreground">Gunakan daftar ini untuk menyiapkan pilihan kategori buku dengan cepat.</p>
             </div>
-            <select multiple size={Math.min(DUMMY_CATEGORY_OPTIONS.length, 8)} className="w-full rounded-xl border bg-background px-3 py-2 text-sm" aria-label="Listbox kategori dummy" readOnly>
+            <select multiple size={Math.min(DUMMY_CATEGORY_OPTIONS.length, 8)} className="w-full rounded-xl border bg-background px-3 py-2 text-sm" aria-label="Listbox kategori dummy" disabled>
               {DUMMY_CATEGORY_OPTIONS.map((category) => (
                 <option key={category.name}>{category.name}</option>
               ))}
