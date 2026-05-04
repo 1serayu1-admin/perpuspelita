@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useMemo, useCallback } from 'react';
+import { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
 import { loginWithEmail, logoutUser, getUserRole } from '@/services/authService';
+import { getSupabase } from '@/integrations/supabase/client';
 
 const AuthContext = createContext(null);
 
@@ -7,14 +8,36 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
 
+  useEffect(() => {
+    const supabase = getSupabase();
+    if (!supabase) return;
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        const user = session?.user || null;
+
+        setUser(user);
+
+        if (user) {
+          const role = await getUserRole(user.id);
+          setRole(role || 'siswa');
+        } else {
+          setRole(null);
+        }
+      }
+    );
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
   const login = useCallback(async (email, password) => {
     try {
       const { data, error } = await loginWithEmail(email, password);
 
       if (!error) {
         setUser(data.user);
-        const userRole = await getUserRole(data.user.id);
-        setRole(userRole || 'siswa');
         return { success: true };
       }
 
