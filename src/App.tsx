@@ -10,6 +10,7 @@ import type { Role } from "@/lib/types";
 
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import DebugSupabase from "./pages/DebugSupabase";
 import Books from "./pages/Books";
 import Categories from "./pages/Categories";
 import Students from "./pages/Students";
@@ -60,6 +61,7 @@ function AppRoutes() {
 
   return (
     <Routes>
+      <Route path="/debug-supabase" element={<DebugSupabase />} />
       <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/dashboard" element={<ProtectedRoute roles={allRoles}><Dashboard /></ProtectedRoute>} />

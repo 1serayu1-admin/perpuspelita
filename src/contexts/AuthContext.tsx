@@ -1,213 +1,59 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, Role, AppRole, toLegacyRole } from '@/lib/types';
-import { supabase } from '@/integrations/supabase/client';
-import type { Session } from '@supabase/supabase-js';
-import { checkRateLimit, resetRateLimit } from '@/lib/validation';
-import { logSecurityEvent } from '@/lib/securityLog';
-import { generateDeviceFingerprint, getDeviceName } from '@/lib/fingerprint';
+import { createContext, useContext, useState, useMemo, useCallback } from 'react';
+import { loginWithEmail, logoutUser } from '@/services/authService';
 
-interface AuthContextType {
-  user: User | null;
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
-  loginWithUsername: (username: string, password: string) => Promise<{ success: boolean; message?: string }>;
-  signup: (email: string, password: string, name: string) => Promise<{ success: boolean; message: string }>;
-  logout: () => void;
-  isAuthenticated: boolean;
-  hasRole: (roles: Role[]) => boolean;
-  loading: boolean;
-}
+const AuthContext = createContext(null);
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [role, setRole] = useState(null);
 
-async function fetchUserProfile(userId: string): Promise<User | null> {
-  // Fetch profile
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('user_id', userId)
-    .maybeSingle();
+  const login = useCallback(async (email, password) => {
+    try {
+      const { data, error } = await loginWithEmail(email, password);
 
-  if (profileError || !profile) return null;
-
-  // Fetch roles
-  const { data: roles } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', userId);
-
-  // Determine primary role (highest privilege)
-  const roleHierarchy: AppRole[] = ['global_super_admin', 'school_super_admin', 'admin', 'guru', 'siswa'];
-  const userRoles = (roles || []).map(r => r.role as AppRole);
-  const primaryRole: AppRole = roleHierarchy.find(r => userRoles.includes(r)) || 'siswa';
-
-  return {
-    id: profile.user_id,
-    name: profile.name,
-    email: profile.email,
-    role: toLegacyRole(primaryRole),
-    appRole: primaryRole,
-    avatar: profile.avatar_url || undefined,
-    schoolId: profile.school_id || undefined,
-  };
-}
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
-          // Use setTimeout to avoid potential deadlock with Supabase client
-          setTimeout(async () => {
-            const profile = await fetchUserProfile(session.user.id);
-            setUser(profile);
-            setLoading(false);
-          }, 0);
-        } else {
-          setUser(null);
-          setLoading(false);
-        }
+      if (!error) {
+        setUser(data.user);
+        setRole('admin'); // temporary mock
+        return { success: true };
       }
-    );
 
-    // THEN check existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const profile = await fetchUserProfile(session.user.id);
-        setUser(profile);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+      return { success: false, message: error.message };
+    } catch {
+      return { success: false };
+    }
   }, []);
 
-  const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
-    const rateCheck = checkRateLimit(email.toLowerCase());
-    if (!rateCheck.allowed) {
-      const secs = Math.ceil((rateCheck.remainingMs || 60000) / 1000);
-      return { success: false, message: `Terlalu banyak percobaan login. Coba lagi dalam ${secs} detik.` };
-    }
-
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      logSecurityEvent('login_failure', 'failure', error.message, email);
-      return { success: false, message: error.message };
-    }
-
-    resetRateLimit(email.toLowerCase());
-
-    // Register device fingerprint
-    const fingerprint = generateDeviceFingerprint();
-    const deviceName = getDeviceName();
+  const logout = useCallback(async () => {
     try {
-      await (supabase as any).from('authorized_devices').upsert({
-        owner_user_id: data.user.id,
-        fingerprint,
-        device_name: deviceName,
-        last_used_at: new Date().toISOString(),
-        school_id: null, // Will be updated after profile fetch
-      }, { onConflict: 'owner_user_id,fingerprint' });
-    } catch { /* non-blocking */ }
+      await logoutUser();
+      setUser(null);
+      setRole(null);
+    } catch {}
+  }, []);
 
-    // After login, check IP restriction for user's school
-    const profile = await fetchUserProfile(data.user.id);
-    if (profile?.schoolId) {
-      // Update device school_id
-      try {
-        await (supabase as any).from('authorized_devices')
-          .update({ school_id: profile.schoolId })
-          .eq('owner_user_id', data.user.id)
-          .eq('fingerprint', fingerprint);
-      } catch { /* non-blocking */ }
-
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-        const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-ip`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            },
-            body: JSON.stringify({ school_id: profile.schoolId }),
-            signal: controller.signal,
-          }
-        );
-        clearTimeout(timeoutId);
-
-        const result = await res.json();
-        if (!result.allowed) {
-          await supabase.auth.signOut();
-          logSecurityEvent('blocked_ip', 'blocked', `IP ${result.ip} ditolak`, email, profile.schoolId);
-          return {
-            success: false,
-            message: `Akses ditolak. IP Anda (${result.ip}) tidak diizinkan untuk mengakses sekolah ini.`,
-          };
-        }
-      } catch {
-        // If IP check fails (timeout, network error), allow access (fail-open for intranet safety)
-      }
-    }
-
-    logSecurityEvent('login_success', 'success', 'Login berhasil', email, profile?.schoolId);
-    return { success: true };
-  };
-
-  const loginWithUsername = async (username: string, password: string): Promise<{ success: boolean; message?: string }> => {
-    const rateCheck = checkRateLimit(username.toLowerCase());
-    if (!rateCheck.allowed) {
-      const secs = Math.ceil((rateCheck.remainingMs || 60000) / 1000);
-      return { success: false, message: `Terlalu banyak percobaan login. Coba lagi dalam ${secs} detik.` };
-    }
-
-    // Look up email from username
-    const { data: email, error: lookupError } = await supabase.rpc('get_email_by_username', { _username: username });
-    if (lookupError || !email) {
-      logSecurityEvent('login_failure', 'failure', 'Username tidak ditemukan', username);
-      return { success: false, message: 'Username tidak ditemukan' };
-    }
-    return login(email, password);
-  };
-
-  const signup = async (email: string, password: string, name: string): Promise<{ success: boolean; message: string }> => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { name },
-        emailRedirectTo: window.location.origin,
-      },
-    });
-    if (error) return { success: false, message: error.message };
-    return { success: true, message: 'Akun berhasil dibuat! Silakan cek email untuk verifikasi.' };
-  };
-
-  const logout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-  };
-
-  const hasRole = (roles: Role[]) => {
-    if (!user) return false;
-    return roles.includes(user.role);
-  };
+  const value = useMemo(() => ({
+    user,
+    role,
+    isAuthenticated: !!user,
+    login,
+    logout,
+    hasRole: (roles) => roles?.includes(role),
+  }), [user, role, login, logout]);
 
   return (
-    <AuthContext.Provider value={{ user, login, loginWithUsername, signup, logout, isAuthenticated: !!user, hasRole, loading }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
+  return useContext(AuthContext) || {
+    user: null,
+    role: null,
+    isAuthenticated: false,
+    login: async () => ({ success: false }),
+    logout: () => {},
+    hasRole: () => false,
+  };
 }
