@@ -27,3 +27,18 @@ export function onAuthStateChange(callback: (event: string, session: any) => voi
 
   return supabase.auth.onAuthStateChange(callback);
 }
+
+export async function getUserRole(userId: string) {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .single();
+
+  if (error) return null;
+
+  return data?.role || null;
+}

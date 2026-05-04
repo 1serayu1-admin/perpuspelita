@@ -1,11 +1,11 @@
 import { createContext, useContext, useState, useMemo, useCallback } from 'react';
-import { loginWithEmail, logoutUser } from '@/services/authService';
+import { loginWithEmail, logoutUser, getUserRole } from '@/services/authService';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [role] = useState('admin'); // temporary test mode - force admin
+  const [role, setRole] = useState(null);
 
   const login = useCallback(async (email, password) => {
     try {
@@ -13,7 +13,8 @@ export function AuthProvider({ children }) {
 
       if (!error) {
         setUser(data.user);
-        setRole('admin'); // temporary mock
+        const userRole = await getUserRole(data.user.id);
+        setRole(userRole || 'siswa');
         return { success: true };
       }
 
