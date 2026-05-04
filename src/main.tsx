@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
+import ProtectedRoute from '@/components/auth/ProtectedRoute'
 
 // Test: ONE real page only
 import Dashboard from './pages/Dashboard'
@@ -21,7 +22,14 @@ function App() {
         <Route path="/login" element={<SafePlaceholder name="LOGIN" />} />
         <Route path="/debug-supabase" element={<SafePlaceholder name="DEBUG" />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'school_super_admin']}>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/books" element={<SafePlaceholder name="BOOKS" />} />
         <Route path="/categories" element={<SafePlaceholder name="CATEGORIES" />} />
         <Route path="/students" element={<SafePlaceholder name="STUDENTS" />} />
