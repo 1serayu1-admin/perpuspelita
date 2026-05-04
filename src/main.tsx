@@ -6,6 +6,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute'
 
 // Test: ONE real page only
 import Dashboard from './pages/Dashboard'
+import Users from './pages/Users'
 
 const SafePlaceholder = ({ name }: { name: string }) => (
   <div style={{ padding: 50, fontFamily: 'monospace' }}>
@@ -27,6 +28,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['admin', 'school_super_admin']}>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/users"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Users />
             </ProtectedRoute>
           }
         />
