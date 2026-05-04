@@ -13,6 +13,7 @@ export function AuthProvider({ children }) {
 
       if (!error) {
         setUser(data.user);
+        console.log('USER ID:', data.user.id); // Temporary: for database fix
         const userRole = await getUserRole(data.user.id);
         setRole(userRole || 'siswa');
         return { success: true };
