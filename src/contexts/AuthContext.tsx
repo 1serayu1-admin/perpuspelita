@@ -4,8 +4,8 @@ import { loginWithEmail, logoutUser, getUserRole } from '@/services/authService'
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [role, setRole] = useState(null);
+  const [user, setUser] = useState({ id: 'test-user-id' }); // Temporary: force mock user
+  const [role, setRole] = useState('admin'); // Temporary: force admin role
 
   const login = useCallback(async (email, password) => {
     try {
