@@ -8,9 +8,16 @@ interface ProtectedRouteProps {
 export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const { role } = useAuth();
 
-  if (!allowedRoles?.includes(role)) {
-    return <div style={{ padding: 50, textAlign: 'center' }}>Access Denied</div>;
-  }
+  const isAllowed = allowedRoles?.includes(role);
 
-  return <>{children}</>;
+  return (
+    <div>
+      {!isAllowed && (
+        <div style={{ color: 'red', marginBottom: 10 }}>
+          Access Denied — Role: {role || 'NONE'}
+        </div>
+      )}
+      {isAllowed ? children : <div>Blocked Content</div>}
+    </div>
+  );
 }
