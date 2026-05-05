@@ -38,6 +38,8 @@ export async function getUserRole(userId: string) {
     .eq('user_id', userId)
     .single();
 
+  console.log('ROLE QUERY:', { userId, data, error });
+
   if (error) return null;
 
   return data?.role || null;
