@@ -12,6 +12,20 @@ export function AuthProvider({ children }) {
     const supabase = getSupabase();
     if (!supabase) return;
 
+    // Initial session load on component mount
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const user = data?.session?.user || null;
+
+      setUser(user);
+
+      if (user) {
+        const role = await getUserRole(user.id);
+        setRole(role || 'siswa');
+      }
+    })();
+
+    // Auth state listener for login/logout events
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         const user = session?.user || null;
