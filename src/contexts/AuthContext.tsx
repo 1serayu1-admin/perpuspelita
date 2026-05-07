@@ -7,6 +7,7 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const supabase = getSupabase();
@@ -39,6 +40,7 @@ export function AuthProvider({ children }) {
         const role = await getUserRole(user.id);
         setRole(role || 'siswa');
       }
+      setLoading(false);
     })();
 
     // Auth state listener for login/logout events
@@ -52,6 +54,7 @@ export function AuthProvider({ children }) {
       } else {
         setRole(null);
       }
+      setLoading(false);
     });
 
     return () => sub.subscription.unsubscribe();
@@ -83,11 +86,12 @@ export function AuthProvider({ children }) {
   const value = useMemo(() => ({
     user,
     role,
+    loading,
     isAuthenticated: !!user,
     login,
     logout,
     hasRole: (roles) => roles?.includes(role),
-  }), [user, role, login, logout]);
+  }), [user, role, loading, login, logout]);
 
   return (
     <AuthContext.Provider value={value}>
@@ -100,6 +104,7 @@ export function useAuth() {
   return useContext(AuthContext) || {
     user: null,
     role: null,
+    loading: false,
     isAuthenticated: false,
     login: async () => ({ success: false }),
     logout: () => {},
