@@ -1,8 +1,8 @@
+import { AppLayout } from '@/layouts/AppLayout';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSupabase } from '@/integrations/supabase/client';
-import { User, LogOut, Shield, Mail } from 'lucide-react';
-import { logoutUser } from '@/services/authService';
+import { User, Shield, Mail } from 'lucide-react';
 
 export default function Profil() {
   const { user, role } = useAuth();
@@ -29,16 +29,12 @@ export default function Profil() {
     fetchQuota();
   }, [user]);
 
-  const handleLogout = async () => {
-    await logoutUser();
-    window.location.href = '/login';
-  };
-
-  // P1-A Fix: No more navigate() render violation!
   if (!user) return null;
 
   return (
-    <div className="max-w-2xl mx-auto p-6 space-y-8">
+    <AppLayout>
+      <div className="max-w-2xl mx-auto space-y-8">
+
       <h1 className="text-2xl font-bold">Profil Pengguna</h1>
 
       <div className="bg-card border rounded-2xl p-6 shadow-sm">
@@ -85,14 +81,7 @@ export default function Profil() {
           </div>
         </div>
       </div>
-
-      <button
-        onClick={handleLogout}
-        className="w-full flex items-center justify-center gap-2 text-destructive hover:bg-destructive/10 px-4 py-3 rounded-xl transition-colors font-medium border border-destructive/20"
-      >
-        <LogOut className="w-5 h-5" />
-        Keluar
-      </button>
     </div>
+    </AppLayout>
   );
 }

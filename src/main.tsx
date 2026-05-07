@@ -1,36 +1,52 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from 'sonner'
 import { AuthProvider } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
+import './index.css'
 
-// Test: ONE real page only
+// Pages
 import Dashboard from './pages/Dashboard'
 import Users from './pages/Users'
 import Login from './pages/Login'
 import Profil from './pages/Profil'
 import TanyaAI from './pages/TanyaAI'
 import Books from './pages/Books'
+import Categories from './pages/Categories'
+import Students from './pages/Students'
+import Teachers from './pages/Teachers'
+import Classes from './pages/Classes'
+import BorrowRegular from './pages/BorrowRegular'
+import BorrowLesson from './pages/BorrowLesson'
+import Returns from './pages/Returns'
+import Reports from './pages/Reports'
+import ActivityLog from './pages/ActivityLog'
+import Settings from './pages/Settings'
+import Backup from './pages/Backup'
+import AdminManagement from './pages/AdminManagement'
+import BorrowRequestPage from './pages/BorrowRequestPage'
+import ApprovalPage from './pages/ApprovalPage'
+import InstallApp from './pages/InstallApp'
+import Schools from './pages/Schools'
+import SecurityPanel from './pages/SecurityPanel'
+import NotFound from './pages/NotFound'
 
-const SafePlaceholder = ({ name }: { name: string }) => (
-  <div style={{ padding: 50, fontFamily: 'monospace' }}>
-    <h1 style={{ color: 'green' }}>{name} SAFE</h1>
-    <p>This route is working correctly.</p>
-  </div>
-)
+const queryClient = new QueryClient()
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* All routes with safe placeholders, except Dashboard */}
         <Route path="/login" element={<Login />} />
-        <Route path="/debug-supabase" element={<SafePlaceholder name="DEBUG" />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        
+        {/* Protected Routes */}
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute allowedRoles={['admin', 'school_super_admin']}>
+            <ProtectedRoute allowedRoles={['admin', 'school_super_admin', 'guru', 'siswa']}>
               <Dashboard />
             </ProtectedRoute>
           }
@@ -67,33 +83,155 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/categories" element={<SafePlaceholder name="CATEGORIES" />} />
-        <Route path="/students" element={<SafePlaceholder name="STUDENTS" />} />
-        <Route path="/teachers" element={<SafePlaceholder name="TEACHERS" />} />
-        <Route path="/classes" element={<SafePlaceholder name="CLASSES" />} />
-        <Route path="/borrow-regular" element={<SafePlaceholder name="BORROW REGULAR" />} />
-        <Route path="/borrow-lesson" element={<SafePlaceholder name="BORROW LESSON" />} />
-        <Route path="/returns" element={<SafePlaceholder name="RETURNS" />} />
-        <Route path="/reports" element={<SafePlaceholder name="REPORTS" />} />
-        <Route path="/activity-log" element={<SafePlaceholder name="ACTIVITY LOG" />} />
-        <Route path="/settings" element={<SafePlaceholder name="SETTINGS" />} />
-        <Route path="/backup" element={<SafePlaceholder name="BACKUP" />} />
-        <Route path="/admin-management" element={<SafePlaceholder name="ADMIN MGMT" />} />
-        <Route path="/borrow-request" element={<SafePlaceholder name="BORROW REQUEST" />} />
-        <Route path="/approval" element={<SafePlaceholder name="APPROVAL" />} />
-        <Route path="/install" element={<SafePlaceholder name="INSTALL" />} />
-        <Route path="/schools" element={<SafePlaceholder name="SCHOOLS" />} />
-        <Route path="/security" element={<SafePlaceholder name="SECURITY" />} />
-        <Route path="*" element={<SafePlaceholder name="404 NOT FOUND" />} />
+        <Route
+          path="/categories"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'school_super_admin', 'guru']}>
+              <Categories />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/students"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'school_super_admin']}>
+              <Students />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/teachers"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'school_super_admin']}>
+              <Teachers />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/classes"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'school_super_admin']}>
+              <Classes />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/borrow-regular"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'school_super_admin', 'guru']}>
+              <BorrowRegular />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/borrow-lesson"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'school_super_admin', 'guru']}>
+              <BorrowLesson />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/returns"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'school_super_admin', 'guru']}>
+              <Returns />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'school_super_admin']}>
+              <Reports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/activity-log"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <ActivityLog />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'school_super_admin', 'guru']}>
+              <Settings />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/backup"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Backup />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin-management"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/borrow-request"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'school_super_admin', 'guru', 'siswa']}>
+              <BorrowRequestPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/approval"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'school_super_admin', 'guru']}>
+              <ApprovalPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/install"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'school_super_admin', 'guru', 'siswa']}>
+              <InstallApp />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/schools"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Schools />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/security"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <SecurityPanel />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
-  )
+  );
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <AuthProvider>
-      <App />
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <App />
+        <Toaster richColors position="top-right" />
+      </AuthProvider>
+    </QueryClientProvider>
   </React.StrictMode>
 )

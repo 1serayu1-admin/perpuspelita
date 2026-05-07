@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getSupabase } from '@/integrations/supabase/client';
+import { AppLayout } from '@/layouts/AppLayout';
 
 type Role = 'admin' | 'school_super_admin' | 'global_super_admin' | 'guru' | 'siswa';
 
@@ -35,7 +36,7 @@ export default function Users() {
               .from('user_roles')
               .select('role')
               .eq('user_id', user.id)
-              .single();
+              .maybeSingle();
 
             return {
               ...user,
@@ -74,42 +75,45 @@ export default function Users() {
   }
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>User Management</h1>
+    <AppLayout>
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">User Management</h1>
 
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr style={{ borderBottom: '2px solid #ccc' }}>
-            <th style={{ textAlign: 'left', padding: 10 }}>Email</th>
-            <th style={{ textAlign: 'left', padding: 10 }}>Name</th>
-            <th style={{ textAlign: 'left', padding: 10 }}>Role</th>
-            <th style={{ textAlign: 'left', padding: 10 }}>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((user) => (
-            <tr key={user.id} style={{ borderBottom: '1px solid #eee' }}>
-              <td style={{ padding: 10 }}>{user.email || 'N/A'}</td>
-              <td style={{ padding: 10 }}>{user.name || 'N/A'}</td>
-              <td style={{ padding: 10 }}>{user.role}</td>
-              <td style={{ padding: 10 }}>
-                <select
-                  value={user.role}
-                  onChange={(e) => assignRole(user.id, e.target.value as Role)}
-                  style={{ padding: 5 }}
-                >
-                  <option value="admin">admin</option>
-                  <option value="school_super_admin">school_super_admin</option>
-                  <option value="guru">guru</option>
-                  <option value="siswa">siswa</option>
-                </select>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {users.length === 0 && <p>No users found.</p>}
-    </div>
+        <div className="bg-card border rounded-2xl overflow-hidden shadow-sm">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-muted/50 border-b">
+                <th className="p-4 font-semibold text-sm">Email</th>
+                <th className="p-4 font-semibold text-sm">Name</th>
+                <th className="p-4 font-semibold text-sm">Role</th>
+                <th className="p-4 font-semibold text-sm">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {users.map((user) => (
+                <tr key={user.id} className="hover:bg-muted/30 transition-colors">
+                  <td className="p-4 text-sm">{user.email || 'N/A'}</td>
+                  <td className="p-4 text-sm">{user.name || 'N/A'}</td>
+                  <td className="p-4 text-sm capitalize">{user.role}</td>
+                  <td className="p-4">
+                    <select
+                      value={user.role}
+                      onChange={(e) => assignRole(user.id, e.target.value as Role)}
+                      className="bg-background border rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      <option value="admin">admin</option>
+                      <option value="school_super_admin">school_super_admin</option>
+                      <option value="guru">guru</option>
+                      <option value="siswa">siswa</option>
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {users.length === 0 && <p className="p-8 text-center text-muted-foreground">No users found.</p>}
+        </div>
+      </div>
+    </AppLayout>
   );
 }
