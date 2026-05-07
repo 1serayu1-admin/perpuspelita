@@ -12,11 +12,27 @@ export function AuthProvider({ children }) {
     const supabase = getSupabase();
     if (!supabase) return;
 
+    // DEBUG: Hard test query
+    (async () => {
+      const { data: session } = await supabase.auth.getSession();
+      console.log('SESSION USER:', session?.session?.user);
+
+      const userId = session?.session?.user?.id;
+      if (userId) {
+        const { data, error } = await supabase
+          .from('user_roles')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        console.log('RAW ROLE QUERY:', { userId, data, error: error?.message });
+      }
+    })();
+
     // Initial session load on component mount
     (async () => {
       const { data } = await supabase.auth.getSession();
-      const user = data?.session?.user || null;
-
+      const user = data?.session?.user ?? null;
       setUser(user);
 
       if (user) {
@@ -26,24 +42,19 @@ export function AuthProvider({ children }) {
     })();
 
     // Auth state listener for login/logout events
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        const user = session?.user || null;
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
+      const user = session?.user ?? null;
+      setUser(user);
 
-        setUser(user);
-
-        if (user) {
-          const role = await getUserRole(user.id);
-          setRole(role || 'siswa');
-        } else {
-          setRole(null);
-        }
+      if (user) {
+        const role = await getUserRole(user.id);
+        setRole(role || 'siswa');
+      } else {
+        setRole(null);
       }
-    );
+    });
 
-    return () => {
-      listener.subscription.unsubscribe();
-    };
+    return () => sub.subscription.unsubscribe();
   }, []);
 
   const login = useCallback(async (email, password) => {

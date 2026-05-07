@@ -1,12 +1,16 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 
 // Test: ONE real page only
 import Dashboard from './pages/Dashboard'
 import Users from './pages/Users'
+import Login from './pages/Login'
+import Profil from './pages/Profil'
+import TanyaAI from './pages/TanyaAI'
+import Books from './pages/Books'
 
 const SafePlaceholder = ({ name }: { name: string }) => (
   <div style={{ padding: 50, fontFamily: 'monospace' }}>
@@ -17,10 +21,10 @@ const SafePlaceholder = ({ name }: { name: string }) => (
 
 function App() {
   return (
-    <HashRouter>
+    <BrowserRouter>
       <Routes>
         {/* All routes with safe placeholders, except Dashboard */}
-        <Route path="/login" element={<SafePlaceholder name="LOGIN" />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/debug-supabase" element={<SafePlaceholder name="DEBUG" />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route
@@ -39,7 +43,30 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/books" element={<SafePlaceholder name="BOOKS" />} />
+        <Route
+          path="/profil"
+          element={
+            <ProtectedRoute allowedRoles={['siswa', 'guru', 'admin', 'school_super_admin']}>
+              <Profil />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tanya-ai"
+          element={
+            <ProtectedRoute allowedRoles={['siswa', 'guru', 'admin', 'school_super_admin']}>
+              <TanyaAI />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/books"
+          element={
+            <ProtectedRoute allowedRoles={['siswa', 'guru', 'admin', 'school_super_admin']}>
+              <Books />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/categories" element={<SafePlaceholder name="CATEGORIES" />} />
         <Route path="/students" element={<SafePlaceholder name="STUDENTS" />} />
         <Route path="/teachers" element={<SafePlaceholder name="TEACHERS" />} />
@@ -59,7 +86,7 @@ function App() {
         <Route path="/security" element={<SafePlaceholder name="SECURITY" />} />
         <Route path="*" element={<SafePlaceholder name="404 NOT FOUND" />} />
       </Routes>
-    </HashRouter>
+    </BrowserRouter>
   )
 }
 

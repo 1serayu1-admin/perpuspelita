@@ -3,28 +3,24 @@ import { getSupabase } from '@/integrations/supabase/client';
 export async function loginWithEmail(email: string, password: string) {
   const supabase = getSupabase();
   if (!supabase) return { error: { message: 'Supabase not ready' }, data: null };
-
   return supabase.auth.signInWithPassword({ email, password });
 }
 
 export async function logoutUser() {
   const supabase = getSupabase();
   if (!supabase) return;
-
   return supabase.auth.signOut();
 }
 
 export async function getCurrentSession() {
   const supabase = getSupabase();
   if (!supabase) return { data: { session: null } };
-
   return supabase.auth.getSession();
 }
 
 export function onAuthStateChange(callback: (event: string, session: any) => void) {
   const supabase = getSupabase();
   if (!supabase) return { data: { subscription: { unsubscribe: () => {} } } };
-
   return supabase.auth.onAuthStateChange(callback);
 }
 
@@ -32,15 +28,19 @@ export async function getUserRole(userId: string) {
   const supabase = getSupabase();
   if (!supabase) return null;
 
+  // FIX 406: use maybeSingle() instead of single()
   const { data, error } = await supabase
     .from('user_roles')
     .select('role')
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
 
-  console.log('ROLE QUERY:', { userId, data, error });
+  console.log('ROLE QUERY:', { userId, data, error: error?.message });
 
-  if (error) return null;
+  if (error) {
+    console.error('Role query failed:', error);
+    return null;
+  }
 
   return data?.role || null;
 }

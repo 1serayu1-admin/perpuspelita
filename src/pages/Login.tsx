@@ -1,248 +1,134 @@
 import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useSettings } from '@/contexts/SettingsContext';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Eye, EyeOff, User, Lock, ArrowRight, Shield, UserCog, GraduationCap, Users, Mail } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { getSupabase } from '@/integrations/supabase/client';
+import { BookOpen, KeyRound, Mail, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import loginBg from '@/assets/login-bg.jpg';
 
-const Login = () => {
+export default function Login() {
   const [email, setEmail] = useState('');
-  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [showPass, setShowPass] = useState(false);
-  const [isSuperAdminLogin, setIsSuperAdminLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, loginWithUsername } = useAuth();
-  const { settings } = useSettings();
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) {
+      toast.error('Email dan password wajib diisi');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      let result;
-      if (isSuperAdminLogin) {
-        result = await login(email, password);
-      } else {
-        result = await loginWithUsername(username, password);
-      }
-      if (result.success) {
-        toast.success('Login berhasil!');
-        navigate('/dashboard');
-      } else {
-        toast.error(result.message || 'Username atau password salah');
-      }
-    } catch {
-      toast.error('Terjadi kesalahan');
+      const supabase = getSupabase();
+      if (!supabase) throw new Error('Koneksi database terputus');
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+      
+      toast.success('Login berhasil!');
+      navigate('/dashboard');
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal login');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left — Hero panel with logo showcase */}
-      <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden">
-        <img
-          src={loginBg}
-          alt="Library"
-          className="absolute inset-0 w-full h-full object-cover scale-105 transition-transform duration-[20s] hover:scale-110"
-        />
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/85 via-primary/60 to-secondary/70" />
-
-        {/* Animated decorative elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 right-20 w-32 h-32 rounded-full border border-primary-foreground/10 animate-spin-slow" />
-          <div className="absolute bottom-32 left-16 w-24 h-24 rounded-full border border-primary-foreground/10 animate-spin-slow" style={{ animationDirection: 'reverse', animationDuration: '18s' }} />
-          <div className="absolute top-1/2 right-10 w-16 h-16 rounded-full bg-primary-foreground/5 animate-float" />
-          <div className="absolute bottom-20 right-32 w-8 h-8 rounded-full bg-secondary/30 animate-float" style={{ animationDelay: '1.5s' }} />
-        </div>
-
-        {/* Content */}
-        <div className="relative z-10 flex flex-col justify-between p-10 w-full">
-          <div className="flex items-center gap-3 animate-fade-in">
-            {settings.logoUrl ? (
-              <img src={settings.logoUrl} alt="Logo" className="w-9 h-9 rounded-lg object-contain" />
-            ) : (
-              <div className="w-9 h-9 rounded-lg bg-primary-foreground/15 backdrop-blur-sm flex items-center justify-center">
-                <BookOpen className="w-4 h-4 text-primary-foreground" />
-              </div>
-            )}
-            <span className="text-primary-foreground/80 font-medium text-sm">
-              {settings.schoolName || 'Sistem Perpustakaan'}
-            </span>
+    <div className="min-h-screen w-full flex bg-white overflow-hidden">
+      {/* Left Side - Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 z-10 bg-white">
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mx-auto mb-6 transform rotate-3 hover:rotate-0 transition-all duration-300">
+              <BookOpen className="w-8 h-8" />
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Selamat Datang</h1>
+            <p className="text-gray-500 mt-2">Masuk ke sistem Serayu Digital Library</p>
           </div>
 
-          <div className="flex flex-col items-center text-center max-w-lg mx-auto">
-            <div className="relative mb-8 animate-scale-in">
-              <div className="absolute inset-0 rounded-3xl bg-primary-foreground/10 animate-pulse-ring" />
-              <div className="absolute -inset-3 rounded-[2rem] border-2 border-primary-foreground/10 animate-spin-slow" style={{ animationDuration: '20s' }} />
-              {settings.logoUrl ? (
-                <div className="relative w-28 h-28 rounded-3xl overflow-hidden shadow-2xl border-2 border-primary-foreground/20 bg-primary-foreground/10 backdrop-blur-md p-3 animate-float">
-                  <img src={settings.logoUrl} alt="Logo Sekolah" className="w-full h-full object-contain drop-shadow-lg" />
+          <form onSubmit={handleLogin} className="space-y-6 mt-8">
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-2">Email</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                    <Mail className="h-5 w-5" />
+                  </div>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-gray-50 focus:bg-white outline-none"
+                    placeholder="nama@sekolah.com"
+                    disabled={isLoading}
+                  />
                 </div>
-              ) : (
-                <div className="relative w-28 h-28 rounded-3xl shadow-2xl border-2 border-primary-foreground/20 bg-primary-foreground/10 backdrop-blur-md flex items-center justify-center animate-float">
-                  <BookOpen className="w-14 h-14 text-primary-foreground drop-shadow-lg" />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-2">Password</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                    <KeyRound className="h-5 w-5" />
+                  </div>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-gray-50 focus:bg-white outline-none"
+                    placeholder="••••••••"
+                    disabled={isLoading}
+                  />
                 </div>
-              )}
+              </div>
             </div>
 
-            <h1 className="text-4xl font-extrabold text-primary-foreground leading-tight mb-2 animate-slide-up" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>
-              {settings.appName || 'Perpustakaan'}
-            </h1>
-            <p className="text-primary-foreground/70 text-sm font-medium mb-5 animate-slide-up" style={{ animationDelay: '0.35s', animationFillMode: 'both' }}>
-              {settings.schoolName || 'Sistem Manajemen Perpustakaan'}
-            </p>
-
-            {settings.motto && (
-              <div className="animate-slide-up" style={{ animationDelay: '0.5s', animationFillMode: 'both' }}>
-                <div className="inline-block px-5 py-2.5 rounded-2xl bg-primary-foreground/10 backdrop-blur-sm border border-primary-foreground/10">
-                  <p className="text-primary-foreground font-semibold text-base italic">"{settings.motto}"</p>
-                </div>
-              </div>
-            )}
-
-            {settings.visi && (
-              <p className="text-primary-foreground/60 text-sm leading-relaxed mt-4 max-w-sm animate-slide-up" style={{ animationDelay: '0.65s', animationFillMode: 'both' }}>
-                {settings.visi}
-              </p>
-            )}
-          </div>
-
-          <div className="flex items-center justify-center gap-6 text-primary-foreground/50 text-xs animate-fade-in" style={{ animationDelay: '0.8s', animationFillMode: 'both' }}>
-            <span className="flex items-center gap-1.5">📚 Koleksi Lengkap</span>
-            <span className="w-1 h-1 rounded-full bg-primary-foreground/30" />
-            <span className="flex items-center gap-1.5">🔒 Akses Aman</span>
-            <span className="w-1 h-1 rounded-full bg-primary-foreground/30" />
-            <span className="flex items-center gap-1.5">📖 Pinjam Mudah</span>
-          </div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all duration-200 active:scale-[0.98]"
+            >
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                'Masuk'
+              )}
+            </button>
+          </form>
         </div>
       </div>
 
-      {/* Right — Login form */}
-      <div className="flex-1 flex flex-col items-center justify-center bg-background px-6 py-10 relative">
-        {/* Mobile logo */}
-        <div className="lg:hidden text-center mb-8 animate-scale-in">
-          <div className="relative inline-block mb-4">
-            <div className="absolute -inset-2 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 animate-pulse-ring" />
-            {settings.logoUrl ? (
-              <div className="relative w-20 h-20 rounded-2xl overflow-hidden shadow-lg border-2 border-primary/20 bg-card p-2 animate-float">
-                <img src={settings.logoUrl} alt="Logo" className="w-full h-full object-contain" />
-              </div>
-            ) : (
-              <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg animate-float">
-                <BookOpen className="w-9 h-9 text-primary-foreground" />
-              </div>
-            )}
-          </div>
-          <h2 className="text-xl font-bold text-foreground">{settings.appName || 'Perpustakaan'}</h2>
-          <p className="text-xs text-muted-foreground">{settings.schoolName}</p>
-          {settings.motto && (
-            <p className="text-xs text-primary font-medium italic mt-1">"{settings.motto}"</p>
-          )}
-        </div>
-
-        <div className="w-full max-w-sm">
-          {/* Header */}
-          <div className="mb-8 animate-fade-in">
-            <h2 className="text-2xl font-bold text-foreground mb-1">
-              {isSuperAdminLogin ? 'Masuk (Super Admin)' : 'Masuk'}
+      {/* Right Side - Vibrant Visuals */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gray-50/50">
+        {/* Dynamic Vibrant Gradient Blobs */}
+        <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-primary/20 rounded-full blur-[80px] opacity-70 animate-pulse-ring"></div>
+        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-96 h-96 bg-warning/20 rounded-full blur-[80px] opacity-60 animate-pulse-ring" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[30rem] h-[30rem] bg-success/10 rounded-full blur-[100px] opacity-60"></div>
+        <div className="absolute top-20 left-20 w-64 h-64 bg-destructive/10 rounded-full blur-[60px] opacity-50"></div>
+        
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-12 text-center z-10 backdrop-blur-[2px]">
+          <div className="p-10 rounded-[2rem] bg-white/40 border border-white/60 shadow-2xl backdrop-blur-md max-w-lg transition-transform duration-500 hover:scale-[1.02]">
+            <h2 className="text-4xl font-extrabold text-gray-900 mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-success">
+              Perpustakaan Digital
             </h2>
-            <p className="text-sm text-muted-foreground">
-              {isSuperAdminLogin ? 'Masukkan email dan password Anda' : 'Masukkan username dan password Anda'}
+            <p className="text-gray-700 text-lg leading-relaxed font-medium">
+              Eksplorasi ribuan buku, pinjam dengan mudah, dan manfaatkan asisten AI cerdas untuk menemani belajar Anda.
             </p>
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleLogin} className="space-y-4">
-            {isSuperAdminLogin ? (
-              <div className="relative animate-fade-in" style={{ animationDelay: '0.1s', animationFillMode: 'both' }}>
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="Email"
-                  className="pl-10 h-11 rounded-xl transition-shadow focus:shadow-md"
-                  required
-                />
-              </div>
-            ) : (
-              <div className="relative animate-fade-in" style={{ animationDelay: '0.1s', animationFillMode: 'both' }}>
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  value={username}
-                  onChange={e => setUsername(e.target.value)}
-                  placeholder="Username"
-                  className="pl-10 h-11 rounded-xl transition-shadow focus:shadow-md"
-                  required
-                />
-              </div>
-            )}
-            <div className="relative animate-fade-in" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                type={showPass ? 'text' : 'password'}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="Password"
-                className="pl-10 pr-10 h-11 rounded-xl transition-shadow focus:shadow-md"
-                required
-                minLength={6}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPass(p => !p)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
+            
+            <div className="flex justify-center gap-4 mt-10">
+              <span className="w-4 h-4 rounded-full bg-primary shadow-lg shadow-primary/40 animate-bounce"></span>
+              <span className="w-4 h-4 rounded-full bg-warning shadow-lg shadow-warning/40 animate-bounce" style={{ animationDelay: '0.1s' }}></span>
+              <span className="w-4 h-4 rounded-full bg-success shadow-lg shadow-success/40 animate-bounce" style={{ animationDelay: '0.2s' }}></span>
+              <span className="w-4 h-4 rounded-full bg-destructive shadow-lg shadow-destructive/40 animate-bounce" style={{ animationDelay: '0.3s' }}></span>
             </div>
-
-            <Button
-              type="submit"
-              variant="gradient"
-              size="lg"
-              className="w-full rounded-xl text-sm font-semibold transition-transform hover:scale-[1.02] active:scale-[0.98]"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                  Masuk...
-                </span>
-              ) : (
-                <>
-                  Masuk <ArrowRight className="w-4 h-4 ml-1" />
-                </>
-              )}
-            </Button>
-          </form>
-
-          {/* Toggle super admin / username login */}
-          <div className="mt-4 text-center">
-            <button
-              onClick={() => setIsSuperAdminLogin(s => !s)}
-              className="text-xs text-muted-foreground hover:text-primary hover:underline font-medium transition-colors"
-            >
-              {isSuperAdminLogin ? '← Kembali ke login username' : 'Login sebagai Super Admin (Email)'}
-            </button>
           </div>
-
-          {/* Footer */}
-          <p className="text-center text-[11px] text-muted-foreground mt-8">
-            &copy; {new Date().getFullYear()} SERAYU IT SERVICE
-          </p>
         </div>
       </div>
     </div>
   );
-};
-
-export default Login;
+}

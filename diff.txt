@@ -1,0 +1,552 @@
+diff --git a/.env b/.env
+index 3b3dc99..f3b7e07 100644
+--- a/.env
++++ b/.env
+@@ -1,3 +1,2 @@
+-VITE_SUPABASE_PROJECT_ID="ajmmyxeyqjzkdtqsyqrc"
+-VITE_SUPABASE_PUBLISHABLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFqbW15eGV5cWp6a2R0cXN5cXJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5Nzg0NjYsImV4cCI6MjA4ODU1NDQ2Nn0.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+-VITE_SUPABASE_URL="https://ajmmyxeyqjzkdtqsyqrc.supabase.co"
++VITE_SUPABASE_URL=https://ajmmyxeyqjzkdtqsyqrc.supabase.co
++VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFqbW15eGV5cWp6a2R0cXN5cXJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzNzk5NTcsImV4cCI6MjA4NTk1NTk1N30.qG5X6cnOSgkHVIJIWDL_fupxni9F0LMMNWj66GzinZA
+\ No newline at end of file
+diff --git a/src/contexts/AuthContext.tsx b/src/contexts/AuthContext.tsx
+index 85e22e2..f5be723 100644
+--- a/src/contexts/AuthContext.tsx
++++ b/src/contexts/AuthContext.tsx
+@@ -12,11 +12,27 @@ export function AuthProvider({ children }) {
+     const supabase = getSupabase();
+     if (!supabase) return;
+ 
++    // DEBUG: Hard test query
++    (async () => {
++      const { data: session } = await supabase.auth.getSession();
++      console.log('SESSION USER:', session?.session?.user);
++
++      const userId = session?.session?.user?.id;
++      if (userId) {
++        const { data, error } = await supabase
++          .from('user_roles')
++          .select('*')
++          .eq('user_id', userId)
++          .maybeSingle();
++
++        console.log('RAW ROLE QUERY:', { userId, data, error: error?.message });
++      }
++    })();
++
+     // Initial session load on component mount
+     (async () => {
+       const { data } = await supabase.auth.getSession();
+-      const user = data?.session?.user || null;
+-
++      const user = data?.session?.user ?? null;
+       setUser(user);
+ 
+       if (user) {
+@@ -26,24 +42,19 @@ export function AuthProvider({ children }) {
+     })();
+ 
+     // Auth state listener for login/logout events
+-    const { data: listener } = supabase.auth.onAuthStateChange(
+-      async (event, session) => {
+-        const user = session?.user || null;
+-
+-        setUser(user);
+-
+-        if (user) {
+-          const role = await getUserRole(user.id);
+-          setRole(role || 'siswa');
+-        } else {
+-          setRole(null);
+-        }
++    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
++      const user = session?.user ?? null;
++      setUser(user);
++
++      if (user) {
++        const role = await getUserRole(user.id);
++        setRole(role || 'siswa');
++      } else {
++        setRole(null);
+       }
+-    );
++    });
+ 
+-    return () => {
+-      listener.subscription.unsubscribe();
+-    };
++    return () => sub.subscription.unsubscribe();
+   }, []);
+ 
+   const login = useCallback(async (email, password) => {
+diff --git a/src/integrations/supabase/client.ts b/src/integrations/supabase/client.ts
+index e17888b..9ce52a7 100644
+--- a/src/integrations/supabase/client.ts
++++ b/src/integrations/supabase/client.ts
+@@ -1,41 +1,64 @@
+-import { createClient } from '@supabase/supabase-js';
++import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+ import type { Database } from './types';
+ 
+-let _supabaseClient: ReturnType<typeof createClient<Database>> | null = null;
++let _client: SupabaseClient<Database> | null = null;
+ 
+-export function getSupabase() {
+-  if (_supabaseClient) return _supabaseClient;
++export function getSupabase(): SupabaseClient<Database> | null {
++  if (_client) return _client;
+ 
+-  const url = import.meta.env.VITE_SUPABASE_URL;
+-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
++  const url = import.meta.env.VITE_SUPABASE_URL?.trim();
++  const key = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
+ 
++  // DEBUG: Env check - deep diagnostic
++  const rawUrl = import.meta.env.VITE_SUPABASE_URL;
++  const rawKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
++
++  console.log('=== ENV DEEP DEBUG ===');
++  console.log('URL raw:', rawUrl);
++  console.log('URL trimmed:', rawUrl?.trim());
++  console.log('URL length:', rawUrl?.length, 'vs trimmed:', rawUrl?.trim().length);
++
++  console.log('Key raw first 50:', rawKey?.slice(0, 50));
++  console.log('Key trimmed first 50:', rawKey?.trim().slice(0, 50));
++  console.log('Key length:', rawKey?.length, 'vs trimmed:', rawKey?.trim().length);
++
++  // Check for common issues
++  console.log('Key starts with eyJ:', rawKey?.startsWith('eyJ'));
++  console.log('Key contains spaces:', rawKey?.includes(' '));
++  console.log('Key contains quotes:', rawKey?.includes('"') || rawKey?.includes("'"));
++
++  // Try to parse JWT structure
++  if (rawKey) {
++    const parts = rawKey.trim().split('.');
++    console.log('Key JWT parts count:', parts.length);
++    if (parts.length === 3) {
++      try {
++        const payload = JSON.parse(atob(parts[1]));
++        console.log('Key JWT payload:', { iss: payload.iss, ref: payload.ref, role: payload.role });
++      } catch { console.log('Key JWT parse failed'); }
++    }
++  }
++  console.log('========================');
++
++  // Guard env (jangan throw)
+   if (!url || !key) {
+-    console.warn('Supabase env missing');
++    console.error('Supabase env missing', { url, keyLength: key?.length });
+     return null;
+   }
+ 
+   try {
+-    _supabaseClient = createClient<Database>(url, key, {
++    _client = createClient<Database>(url, key, {
+       auth: {
+-        storage: localStorage,
+         persistSession: true,
+         autoRefreshToken: true,
+-      }
++        detectSessionInUrl: true,
++        storage: window.localStorage,
++      },
+     });
+-    return _supabaseClient;
+-  } catch (err) {
+-    console.error('Supabase init failed:', err);
++    console.log('SUPABASE INIT OK');
++    return _client;
++  } catch (e) {
++    console.error('SUPABASE INIT FAILED', e);
+     return null;
+   }
+-}
+-
+-// Legacy export for backward compatibility (lazy)
+-export const supabase = new Proxy({} as ReturnType<typeof createClient<Database>>, {
+-  get(target, prop) {
+-    const client = getSupabase();
+-    if (!client) {
+-      throw new Error('Supabase not initialized - check env vars');
+-    }
+-    return (client as any)[prop];
+-  }
+-});
+\ No newline at end of file
++}
+\ No newline at end of file
+diff --git a/src/main.tsx b/src/main.tsx
+index 672feb9..5767ed8 100644
+--- a/src/main.tsx
++++ b/src/main.tsx
+@@ -7,6 +7,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute'
+ // Test: ONE real page only
+ import Dashboard from './pages/Dashboard'
+ import Users from './pages/Users'
++import Login from './pages/Login'
+ 
+ const SafePlaceholder = ({ name }: { name: string }) => (
+   <div style={{ padding: 50, fontFamily: 'monospace' }}>
+@@ -20,7 +21,7 @@ function App() {
+     <HashRouter>
+       <Routes>
+         {/* All routes with safe placeholders, except Dashboard */}
+-        <Route path="/login" element={<SafePlaceholder name="LOGIN" />} />
++        <Route path="/login" element={<Login />} />
+         <Route path="/debug-supabase" element={<SafePlaceholder name="DEBUG" />} />
+         <Route path="/" element={<Navigate to="/dashboard" replace />} />
+         <Route
+diff --git a/src/pages/Login.tsx b/src/pages/Login.tsx
+index c6c2558..e1287a4 100644
+--- a/src/pages/Login.tsx
++++ b/src/pages/Login.tsx
+@@ -1,248 +1,48 @@
+ import { useState } from 'react';
+-import { useAuth } from '@/contexts/AuthContext';
+-import { useSettings } from '@/contexts/SettingsContext';
+-import { useNavigate } from 'react-router-dom';
+-import { BookOpen, Eye, EyeOff, User, Lock, ArrowRight, Shield, UserCog, GraduationCap, Users, Mail } from 'lucide-react';
+-import { Input } from '@/components/ui/input';
+-import { Button } from '@/components/ui/button';
+-import { toast } from 'sonner';
+-import loginBg from '@/assets/login-bg.jpg';
++import { getSupabase } from '@/integrations/supabase/client';
+ 
+-const Login = () => {
++export default function Login() {
+   const [email, setEmail] = useState('');
+-  const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
+-  const [showPass, setShowPass] = useState(false);
+-  const [isSuperAdminLogin, setIsSuperAdminLogin] = useState(false);
+-  const [isLoading, setIsLoading] = useState(false);
+-  const { login, loginWithUsername } = useAuth();
+-  const { settings } = useSettings();
+-  const navigate = useNavigate();
+ 
+-  const handleLogin = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    setIsLoading(true);
+-    try {
+-      let result;
+-      if (isSuperAdminLogin) {
+-        result = await login(email, password);
+-      } else {
+-        result = await loginWithUsername(username, password);
+-      }
+-      if (result.success) {
+-        toast.success('Login berhasil!');
+-        navigate('/dashboard');
+-      } else {
+-        toast.error(result.message || 'Username atau password salah');
+-      }
+-    } catch {
+-      toast.error('Terjadi kesalahan');
+-    } finally {
+-      setIsLoading(false);
++  const handleLogin = async () => {
++    const supabase = getSupabase();
++    if (!supabase) return alert('Supabase not ready');
++
++    const { error } = await supabase.auth.signInWithPassword({
++      email,
++      password,
++    });
++
++    if (error) {
++      alert(error.message);
++    } else {
++      window.location.href = '/#/dashboard';
+     }
+   };
+ 
+   return (
+-    <div className="min-h-screen flex">
+-      {/* Left — Hero panel with logo showcase */}
+-      <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden">
+-        <img
+-          src={loginBg}
+-          alt="Library"
+-          className="absolute inset-0 w-full h-full object-cover scale-105 transition-transform duration-[20s] hover:scale-110"
+-        />
+-        {/* Gradient overlay */}
+-        <div className="absolute inset-0 bg-gradient-to-br from-primary/85 via-primary/60 to-secondary/70" />
+-
+-        {/* Animated decorative elements */}
+-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+-          <div className="absolute top-20 right-20 w-32 h-32 rounded-full border border-primary-foreground/10 animate-spin-slow" />
+-          <div className="absolute bottom-32 left-16 w-24 h-24 rounded-full border border-primary-foreground/10 animate-spin-slow" style={{ animationDirection: 'reverse', animationDuration: '18s' }} />
+-          <div className="absolute top-1/2 right-10 w-16 h-16 rounded-full bg-primary-foreground/5 animate-float" />
+-          <div className="absolute bottom-20 right-32 w-8 h-8 rounded-full bg-secondary/30 animate-float" style={{ animationDelay: '1.5s' }} />
+-        </div>
+-
+-        {/* Content */}
+-        <div className="relative z-10 flex flex-col justify-between p-10 w-full">
+-          <div className="flex items-center gap-3 animate-fade-in">
+-            {settings.logoUrl ? (
+-              <img src={settings.logoUrl} alt="Logo" className="w-9 h-9 rounded-lg object-contain" />
+-            ) : (
+-              <div className="w-9 h-9 rounded-lg bg-primary-foreground/15 backdrop-blur-sm flex items-center justify-center">
+-                <BookOpen className="w-4 h-4 text-primary-foreground" />
+-              </div>
+-            )}
+-            <span className="text-primary-foreground/80 font-medium text-sm">
+-              {settings.schoolName || 'Sistem Perpustakaan'}
+-            </span>
+-          </div>
+-
+-          <div className="flex flex-col items-center text-center max-w-lg mx-auto">
+-            <div className="relative mb-8 animate-scale-in">
+-              <div className="absolute inset-0 rounded-3xl bg-primary-foreground/10 animate-pulse-ring" />
+-              <div className="absolute -inset-3 rounded-[2rem] border-2 border-primary-foreground/10 animate-spin-slow" style={{ animationDuration: '20s' }} />
+-              {settings.logoUrl ? (
+-                <div className="relative w-28 h-28 rounded-3xl overflow-hidden shadow-2xl border-2 border-primary-foreground/20 bg-primary-foreground/10 backdrop-blur-md p-3 animate-float">
+-                  <img src={settings.logoUrl} alt="Logo Sekolah" className="w-full h-full object-contain drop-shadow-lg" />
+-                </div>
+-              ) : (
+-                <div className="relative w-28 h-28 rounded-3xl shadow-2xl border-2 border-primary-foreground/20 bg-primary-foreground/10 backdrop-blur-md flex items-center justify-center animate-float">
+-                  <BookOpen className="w-14 h-14 text-primary-foreground drop-shadow-lg" />
+-                </div>
+-              )}
+-            </div>
+-
+-            <h1 className="text-4xl font-extrabold text-primary-foreground leading-tight mb-2 animate-slide-up" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>
+-              {settings.appName || 'Perpustakaan'}
+-            </h1>
+-            <p className="text-primary-foreground/70 text-sm font-medium mb-5 animate-slide-up" style={{ animationDelay: '0.35s', animationFillMode: 'both' }}>
+-              {settings.schoolName || 'Sistem Manajemen Perpustakaan'}
+-            </p>
++    <div style={{ padding: 20 }}>
++      <h1>Login</h1>
+ 
+-            {settings.motto && (
+-              <div className="animate-slide-up" style={{ animationDelay: '0.5s', animationFillMode: 'both' }}>
+-                <div className="inline-block px-5 py-2.5 rounded-2xl bg-primary-foreground/10 backdrop-blur-sm border border-primary-foreground/10">
+-                  <p className="text-primary-foreground font-semibold text-base italic">"{settings.motto}"</p>
+-                </div>
+-              </div>
+-            )}
++      <input
++        placeholder="Email"
++        value={email}
++        onChange={(e) => setEmail(e.target.value)}
++      />
+ 
+-            {settings.visi && (
+-              <p className="text-primary-foreground/60 text-sm leading-relaxed mt-4 max-w-sm animate-slide-up" style={{ animationDelay: '0.65s', animationFillMode: 'both' }}>
+-                {settings.visi}
+-              </p>
+-            )}
+-          </div>
++      <br /><br />
+ 
+-          <div className="flex items-center justify-center gap-6 text-primary-foreground/50 text-xs animate-fade-in" style={{ animationDelay: '0.8s', animationFillMode: 'both' }}>
+-            <span className="flex items-center gap-1.5">📚 Koleksi Lengkap</span>
+-            <span className="w-1 h-1 rounded-full bg-primary-foreground/30" />
+-            <span className="flex items-center gap-1.5">🔒 Akses Aman</span>
+-            <span className="w-1 h-1 rounded-full bg-primary-foreground/30" />
+-            <span className="flex items-center gap-1.5">📖 Pinjam Mudah</span>
+-          </div>
+-        </div>
+-      </div>
++      <input
++        type="password"
++        placeholder="Password"
++        value={password}
++        onChange={(e) => setPassword(e.target.value)}
++      />
+ 
+-      {/* Right — Login form */}
+-      <div className="flex-1 flex flex-col items-center justify-center bg-background px-6 py-10 relative">
+-        {/* Mobile logo */}
+-        <div className="lg:hidden text-center mb-8 animate-scale-in">
+-          <div className="relative inline-block mb-4">
+-            <div className="absolute -inset-2 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 animate-pulse-ring" />
+-            {settings.logoUrl ? (
+-              <div className="relative w-20 h-20 rounded-2xl overflow-hidden shadow-lg border-2 border-primary/20 bg-card p-2 animate-float">
+-                <img src={settings.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+-              </div>
+-            ) : (
+-              <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg animate-float">
+-                <BookOpen className="w-9 h-9 text-primary-foreground" />
+-              </div>
+-            )}
+-          </div>
+-          <h2 className="text-xl font-bold text-foreground">{settings.appName || 'Perpustakaan'}</h2>
+-          <p className="text-xs text-muted-foreground">{settings.schoolName}</p>
+-          {settings.motto && (
+-            <p className="text-xs text-primary font-medium italic mt-1">"{settings.motto}"</p>
+-          )}
+-        </div>
++      <br /><br />
+ 
+-        <div className="w-full max-w-sm">
+-          {/* Header */}
+-          <div className="mb-8 animate-fade-in">
+-            <h2 className="text-2xl font-bold text-foreground mb-1">
+-              {isSuperAdminLogin ? 'Masuk (Super Admin)' : 'Masuk'}
+-            </h2>
+-            <p className="text-sm text-muted-foreground">
+-              {isSuperAdminLogin ? 'Masukkan email dan password Anda' : 'Masukkan username dan password Anda'}
+-            </p>
+-          </div>
+-
+-          {/* Form */}
+-          <form onSubmit={handleLogin} className="space-y-4">
+-            {isSuperAdminLogin ? (
+-              <div className="relative animate-fade-in" style={{ animationDelay: '0.1s', animationFillMode: 'both' }}>
+-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+-                <Input
+-                  type="email"
+-                  value={email}
+-                  onChange={e => setEmail(e.target.value)}
+-                  placeholder="Email"
+-                  className="pl-10 h-11 rounded-xl transition-shadow focus:shadow-md"
+-                  required
+-                />
+-              </div>
+-            ) : (
+-              <div className="relative animate-fade-in" style={{ animationDelay: '0.1s', animationFillMode: 'both' }}>
+-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+-                <Input
+-                  type="text"
+-                  value={username}
+-                  onChange={e => setUsername(e.target.value)}
+-                  placeholder="Username"
+-                  className="pl-10 h-11 rounded-xl transition-shadow focus:shadow-md"
+-                  required
+-                />
+-              </div>
+-            )}
+-            <div className="relative animate-fade-in" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>
+-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+-              <Input
+-                type={showPass ? 'text' : 'password'}
+-                value={password}
+-                onChange={e => setPassword(e.target.value)}
+-                placeholder="Password"
+-                className="pl-10 pr-10 h-11 rounded-xl transition-shadow focus:shadow-md"
+-                required
+-                minLength={6}
+-              />
+-              <button
+-                type="button"
+-                onClick={() => setShowPass(p => !p)}
+-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+-              >
+-                {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+-              </button>
+-            </div>
+-
+-            <Button
+-              type="submit"
+-              variant="gradient"
+-              size="lg"
+-              className="w-full rounded-xl text-sm font-semibold transition-transform hover:scale-[1.02] active:scale-[0.98]"
+-              disabled={isLoading}
+-            >
+-              {isLoading ? (
+-                <span className="flex items-center gap-2">
+-                  <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+-                  Masuk...
+-                </span>
+-              ) : (
+-                <>
+-                  Masuk <ArrowRight className="w-4 h-4 ml-1" />
+-                </>
+-              )}
+-            </Button>
+-          </form>
+-
+-          {/* Toggle super admin / username login */}
+-          <div className="mt-4 text-center">
+-            <button
+-              onClick={() => setIsSuperAdminLogin(s => !s)}
+-              className="text-xs text-muted-foreground hover:text-primary hover:underline font-medium transition-colors"
+-            >
+-              {isSuperAdminLogin ? '← Kembali ke login username' : 'Login sebagai Super Admin (Email)'}
+-            </button>
+-          </div>
+-
+-          {/* Footer */}
+-          <p className="text-center text-[11px] text-muted-foreground mt-8">
+-            &copy; {new Date().getFullYear()} SERAYU IT SERVICE
+-          </p>
+-        </div>
+-      </div>
++      <button onClick={handleLogin}>Login</button>
+     </div>
+   );
+-};
+-
+-export default Login;
++}
+diff --git a/src/pages/Users.tsx b/src/pages/Users.tsx
+index 5fe123a..1d96bcb 100644
+--- a/src/pages/Users.tsx
++++ b/src/pages/Users.tsx
+@@ -95,7 +95,7 @@ export default function Users() {
+               <td style={{ padding: 10 }}>
+                 <select
+                   value={user.role}
+-                  onChange={(e) => assignRole(user.id, e.target.value)}
++                  onChange={(e) => assignRole(user.id, e.target.value as Role)}
+                   style={{ padding: 5 }}
+                 >
+                   <option value="admin">admin</option>
+diff --git a/src/services/authService.ts b/src/services/authService.ts
+index dd4e830..ec6c0f3 100644
+--- a/src/services/authService.ts
++++ b/src/services/authService.ts
+@@ -3,28 +3,24 @@ import { getSupabase } from '@/integrations/supabase/client';
+ export async function loginWithEmail(email: string, password: string) {
+   const supabase = getSupabase();
+   if (!supabase) return { error: { message: 'Supabase not ready' }, data: null };
+-
+   return supabase.auth.signInWithPassword({ email, password });
+ }
+ 
+ export async function logoutUser() {
+   const supabase = getSupabase();
+   if (!supabase) return;
+-
+   return supabase.auth.signOut();
+ }
+ 
+ export async function getCurrentSession() {
+   const supabase = getSupabase();
+   if (!supabase) return { data: { session: null } };
+-
+   return supabase.auth.getSession();
+ }
+ 
+ export function onAuthStateChange(callback: (event: string, session: any) => void) {
+   const supabase = getSupabase();
+   if (!supabase) return { data: { subscription: { unsubscribe: () => {} } } };
+-
+   return supabase.auth.onAuthStateChange(callback);
+ }
+ 
+@@ -32,15 +28,19 @@ export async function getUserRole(userId: string) {
+   const supabase = getSupabase();
+   if (!supabase) return null;
+ 
++  // FIX 406: use maybeSingle() instead of single()
+   const { data, error } = await supabase
+     .from('user_roles')
+     .select('role')
+     .eq('user_id', userId)
+-    .single();
++    .maybeSingle();
+ 
+-  console.log('ROLE QUERY:', { userId, data, error });
++  console.log('ROLE QUERY:', { userId, data, error: error?.message });
+ 
+-  if (error) return null;
++  if (error) {
++    console.error('Role query failed:', error);
++    return null;
++  }
+ 
+   return data?.role || null;
+ }

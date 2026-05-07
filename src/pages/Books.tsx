@@ -1,585 +1,161 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { useSchoolData } from '@/hooks/useSchoolData';
-import { Search, Plus, Edit, Trash2, BookOpen, Upload, FileSpreadsheet, Download, Send, Loader2 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Checkbox } from '@/components/ui/checkbox';
-import { BulkSelectionToolbar } from '@/components/BulkSelectionToolbar';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
-import { bookSchema } from '@/lib/validation';
-import { batchInsertRecords } from '@/lib/batchImport';
-import { DUMMY_CATEGORY_OPTIONS } from '@/lib/dummyCategories';
-import { useBulkSelection } from '@/hooks/useBulkSelection';
+import { Search, Plus, Filter, BookOpen, Download, MoreHorizontal } from 'lucide-react';
 
-interface DbBook {
+type Book = {
   id: string;
-  title: string;
-  author: string;
-  publisher: string;
-  year: number;
-  isbn: string;
-  category_id: string | null;
-  stock: number;
-  available: number;
-  shelf_location: string;
-  cover_url: string | null;
-  school_id: string | null;
-}
+  judul: string;
+  pengarang: string;
+  penerbit: string;
+  jenis: string;
+  jumlah: number;
+  sumber: string;
+};
 
-interface DbCategory {
-  id: string;
-  name: string;
-}
+// Data CSV Dummy (Reference)
+const initialBooks: Book[] = [
+  { id: '1', judul: 'Dasar Desain Grafis kelas X', pengarang: '-', penerbit: 'Erlangga', jenis: 'Non Fiksi', jumlah: 20, sumber: 'BOS' },
+  { id: '2', judul: 'Pemrograman Dasar kelas X', pengarang: '-', penerbit: 'Erlangga', jenis: 'Non Fiksi', jumlah: 20, sumber: 'BOS' },
+  { id: '3', judul: 'Komputer dan Jaringan Dasar kelas X', pengarang: '-', penerbit: 'Erlangga', jenis: 'Non Fiksi', jumlah: 20, sumber: 'BOS' },
+  { id: '4', judul: 'Sistem Komputer kelas X', pengarang: '-', penerbit: 'Erlangga', jenis: 'Non Fiksi', jumlah: 0, sumber: 'BOS' },
+  { id: '5', judul: 'Teknologi Layanan Jaringan kelas XII', pengarang: 'M. Rizal', penerbit: 'Bumi Aksara', jenis: 'Non Fiksi', jumlah: 5, sumber: 'BOS' },
+  { id: '6', judul: 'Pekerjaan Dasar Teknik Otomotif', pengarang: '-', penerbit: '-', jenis: 'Non Fiksi', jumlah: 20, sumber: 'BOS' },
+  { id: '7', judul: 'Pemeliharaan Mesin Kendaraan Ringan XII', pengarang: '-', penerbit: '-', jenis: 'Non Fiksi', jumlah: 20, sumber: 'BOS' },
+];
 
-const Books = () => {
-  const { user, hasRole } = useAuth();
-  
-  const isReadOnly = user?.role === 'siswa';
-  const canEdit = hasRole(['super_admin', 'admin']);
+export default function Books() {
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const { data: books, loading, insert, update, remove, removeMany, refetch } = useSchoolData<DbBook>('books');
-  const { data: categories, refetch: refetchCategories } = useSchoolData<DbCategory>('categories');
+  const filteredBooks = initialBooks.filter(book => 
+    book.judul.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    book.penerbit.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [page, setPage] = useState(1);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [editBook, setEditBook] = useState<DbBook | null>(null);
-  const [importPreview, setImportPreview] = useState<any[]>([]);
-  const [importing, setImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
-  const [importResult, setImportResult] = useState<{ success: number; failed: number } | null>(null);
-  const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
-  const [bookingBook, setBookingBook] = useState<DbBook | null>(null);
-  const [bookingReason, setBookingReason] = useState('');
-  const [bookingDuration, setBookingDuration] = useState('7');
-  const [seedingCategories, setSeedingCategories] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const perPage = 6;
-
-  const resetImportState = () => {
-    setImportPreview([]);
-    setImporting(false);
-    setImportProgress({ current: 0, total: 0 });
-    setImportResult(null);
+  const handleDownloadTemplate = () => {
+    const headers = "No,Judul Buku,Penyusun/Pengarang,Penerbit,Jenis Buku,Jumlah,Sumber\n";
+    const sampleRow = "1,Buku Contoh,Budi Santoso,Erlangga,Fiksi,10,BOS\n";
+    const csvContent = headers + sampleRow;
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "template_data_buku.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
-
-  const filtered = books.filter(b => {
-    const matchSearch = b.title.toLowerCase().includes(search.toLowerCase()) || b.author.toLowerCase().includes(search.toLowerCase()) || b.isbn.includes(search);
-    const matchCat = categoryFilter === 'all' || b.category_id === categoryFilter;
-    return matchSearch && matchCat;
-  });
-
-  const totalPages = Math.ceil(filtered.length / perPage);
-  const paginated = filtered.slice((page - 1) * perPage, page * perPage);
-  const selection = useBulkSelection(paginated.map((book) => book.id));
-
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Yakin ingin menghapus buku ini? Tindakan ini tidak dapat dibatalkan.')) return;
-    const { error } = await remove(id);
-    if (error) toast.error('Gagal menghapus buku');
-    else toast.success('Buku berhasil dihapus');
-  };
-
-  const handleBulkDelete = async () => {
-    if (selection.selectedIds.length === 0) return;
-    if (!window.confirm(`Hapus ${selection.selectedIds.length} buku terpilih?`)) return;
-
-    const { error } = await removeMany(selection.selectedIds);
-    if (error) toast.error('Gagal menghapus buku terpilih');
-    else {
-      toast.success(`${selection.selectedIds.length} buku berhasil dihapus`);
-      selection.clear();
-    }
-  };
-
-  const handleSeedDummyCategories = async () => {
-    setSeedingCategories(true);
-    const result = await batchInsertRecords({
-      table: 'categories',
-      rows: DUMMY_CATEGORY_OPTIONS.map((category) => ({
-        ...category,
-        ...(user?.schoolId ? { school_id: user.schoolId } : {}),
-      })),
-    });
-
-    await refetchCategories();
-    setSeedingCategories(false);
-
-    if (result.failed > 0) toast.warning(`Kategori dummy diproses: ${result.success} berhasil, ${result.failed} gagal`);
-    else toast.success('Kategori dummy berhasil dimuat');
-  };
-
-  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    const payload = {
-      title: form.get('title') as string,
-      author: form.get('author') as string,
-      publisher: form.get('publisher') as string,
-      year: parseInt(form.get('year') as string),
-      isbn: form.get('isbn') as string,
-      category_id: (form.get('categoryId') as string) || null,
-      stock: parseInt(form.get('stock') as string),
-      available: parseInt(form.get('available') as string),
-      shelf_location: form.get('shelfLocation') as string,
-    };
-
-    const result = bookSchema.safeParse(payload);
-    if (!result.success) {
-      const firstError = result.error.errors[0]?.message || 'Data tidak valid';
-      toast.error(firstError);
-      return;
-    }
-
-    if (editBook) {
-      const { error } = await update(editBook.id, payload);
-      if (error) toast.error('Gagal memperbarui buku');
-      else toast.success('Buku berhasil diperbarui');
-    } else {
-      const { error } = await insert(payload);
-      if (error) toast.error('Gagal menambahkan buku');
-      else toast.success('Buku berhasil ditambahkan');
-    }
-    setDialogOpen(false);
-    setEditBook(null);
-  };
-
-  const safeInt = (val: any, fallback: number): number => {
-    const n = parseInt(val);
-    return isNaN(n) ? fallback : n;
-  };
-
-  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImportResult(null);
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const data = evt.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(sheet);
-        const imported = jsonData.map((row) => {
-          const stock = safeInt(row['Stok'] ?? row['stock'], 1);
-          return {
-            title: String(row['Judul'] || row['title'] || '').trim(),
-            author: String(row['Penulis'] || row['author'] || '').trim(),
-            publisher: String(row['Penerbit'] || row['publisher'] || '').trim(),
-            year: safeInt(row['Tahun'] ?? row['year'], 2024),
-            isbn: String(row['ISBN'] || row['isbn'] || '').trim(),
-            category_name: String(row['Kategori'] || row['category'] || row['category_name'] || '').trim(),
-            stock,
-            available: safeInt(row['Tersedia'] ?? row['available'], stock),
-            shelf_location: String(row['Rak'] || row['shelf'] || row['shelfLocation'] || '').trim(),
-          };
-        }).filter(b => b.title !== '');
-        if (imported.length === 0) { toast.error('File tidak memiliki data yang valid'); return; }
-        setImportPreview(imported);
-        setImportDialogOpen(true);
-      } catch { toast.error('Gagal membaca file. Pastikan format benar.'); }
-    };
-    reader.readAsBinaryString(file);
-    if (fileRef.current) fileRef.current.value = '';
-  };
-
-  const confirmImport = async () => {
-    if (importPreview.length === 0 || importing) return;
-
-    setImporting(true);
-    const total = importPreview.length;
-    setImportProgress({ current: 0, total });
-    setImportResult(null);
-    const schoolId = user?.schoolId;
-
-    try {
-      const payloads = importPreview.map(({ category_name, ...book }) => ({
-        ...book,
-        category_id: categories.find((category) => category.name.toLowerCase() === String(category_name || '').toLowerCase())?.id || null,
-        ...(schoolId ? { school_id: schoolId } : {}),
-      }));
-
-      const result = await batchInsertRecords({
-        table: 'books',
-        rows: payloads,
-        onProgress: setImportProgress,
-      });
-
-      setImportResult(result);
-      if (result.failed === 0) {
-        toast.success(`${result.success} buku berhasil diimport`);
-      } else {
-        toast.warning(`Import selesai: ${result.success} berhasil, ${result.failed} gagal`);
-      }
-    } catch {
-      setImportResult({ success: 0, failed: total });
-      toast.error('Terjadi kesalahan saat import buku');
-    } finally {
-      setImporting(false);
-      await refetch();
-    }
-  };
-
-  const downloadTemplate = () => {
-    const templateData = [{ Judul: 'Contoh Buku', Penulis: 'Nama Penulis', Penerbit: 'Nama Penerbit', Tahun: 2024, ISBN: '978-xxx-xxx', Kategori: DUMMY_CATEGORY_OPTIONS[0].name, Stok: 10, Tersedia: 10, Rak: 'A-01' }];
-    const ws = XLSX.utils.json_to_sheet(templateData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Template');
-    XLSX.writeFile(wb, 'template_import_buku.xlsx');
-    toast.success('Template berhasil diunduh');
-  };
-
-  const handleBooking = (book: DbBook) => {
-    setBookingBook(book);
-    setBookingReason('');
-    setBookingDialogOpen(true);
-  };
-
-  const submitBooking = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!bookingBook || !user) return;
-
-    if (!bookingReason.trim() || bookingReason.trim().length < 1) {
-      toast.error('Alasan peminjaman wajib diisi');
-      return;
-    }
-    if (bookingReason.length > 500) {
-      toast.error('Alasan maksimal 500 karakter');
-      return;
-    }
-
-    const requesterRole = user.appRole === 'global_super_admin' || user.appRole === 'school_super_admin' ? 'guru' : user.appRole;
-
-    const { error } = await supabase.from('borrow_requests').insert({
-      requester_id: user.id,
-      requester_name: user.name,
-      requester_role: requesterRole,
-      book_id: bookingBook.id,
-      book_title: bookingBook.title,
-      reason: bookingReason.trim(),
-      class_name: user.appRole === 'siswa' ? '' : null,
-      duration: user.appRole === 'guru' ? parseInt(bookingDuration) : null,
-      school_id: user.schoolId || null,
-    } as any);
-    if (error) toast.error('Gagal mengirim pengajuan: ' + error.message);
-    else toast.success('Pengajuan peminjaman berhasil dikirim!');
-    setBookingDialogOpen(false);
-  };
-
-  const getCategoryName = (id: string | null) => categories.find(c => c.id === id)?.name || '-';
 
   return (
     <AppLayout>
-      <div className="animate-fade-in space-y-4">
-        <div className="page-header">
-          <h1 className="page-title">{isReadOnly ? 'Katalog Buku' : 'Manajemen Buku'}</h1>
-          {canEdit && (
-            <div className="flex gap-2 flex-wrap">
-              <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-                <Upload className="w-4 h-4 mr-1" /> Import Excel/CSV
-              </Button>
-              <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFileImport} className="hidden" />
-              <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditBook(null); }}>
-                <DialogTrigger asChild>
-                  <Button size="sm" variant="gradient"><Plus className="w-4 h-4 mr-1" /> Tambah Buku</Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-                  <DialogHeader><DialogTitle>{editBook ? 'Edit Buku' : 'Tambah Buku Baru'}</DialogTitle></DialogHeader>
-                  <form onSubmit={handleSave} className="space-y-3">
-                    <div><label className="text-sm font-medium">Judul</label><Input name="title" defaultValue={editBook?.title} required /></div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div><label className="text-sm font-medium">Penulis</label><Input name="author" defaultValue={editBook?.author} required /></div>
-                      <div><label className="text-sm font-medium">Penerbit</label><Input name="publisher" defaultValue={editBook?.publisher} required /></div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div><label className="text-sm font-medium">Tahun</label><Input name="year" type="number" defaultValue={editBook?.year || 2024} required /></div>
-                      <div><label className="text-sm font-medium">ISBN</label><Input name="isbn" defaultValue={editBook?.isbn} required /></div>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Kategori</label>
-                      {categories.length === 0 && (
-                        <div className="mb-2 rounded-lg border bg-muted/20 p-3">
-                          <p className="text-xs text-muted-foreground mb-2">Belum ada kategori aktif. Muat kategori dummy agar listbox kategori langsung bisa dipakai.</p>
-                          <Button type="button" size="sm" variant="outline" onClick={handleSeedDummyCategories} disabled={seedingCategories}>
-                            Muat Kategori Dummy
-                          </Button>
-                        </div>
-                      )}
-                      <select name="categoryId" defaultValue={editBook?.category_id || ''} className="w-full h-9 rounded-md border bg-background px-3 text-sm">
-                        <option value="">Pilih Kategori</option>
-                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
-                    </div>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div><label className="text-sm font-medium">Stok</label><Input name="stock" type="number" defaultValue={editBook?.stock || 1} required /></div>
-                      <div><label className="text-sm font-medium">Tersedia</label><Input name="available" type="number" defaultValue={editBook?.available || 1} required /></div>
-                      <div><label className="text-sm font-medium">Rak</label><Input name="shelfLocation" defaultValue={editBook?.shelf_location} required /></div>
-                    </div>
-                    <Button type="submit" variant="gradient" className="w-full">{editBook ? 'Simpan Perubahan' : 'Tambah Buku'}</Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title flex items-center gap-3">
+            <div className="p-2 bg-primary/10 text-primary rounded-xl">
+              <BookOpen className="w-6 h-6" />
             </div>
-          )}
+            Katalog Buku
+          </h1>
+          <p className="text-gray-500 mt-1">Kelola data buku perpustakaan, stok, dan kategori.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={handleDownloadTemplate}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Download Template CSV</span>
+          </button>
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors shadow-sm shadow-primary/30">
+            <Plus className="w-4 h-4" />
+            <span>Tambah Buku</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="data-table-wrapper">
+        <div className="p-5 border-b border-gray-100 flex flex-col sm:flex-row gap-4 justify-between bg-white/50">
+          <div className="relative max-w-md w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input 
+              type="text" 
+              placeholder="Cari judul buku atau penerbit..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm"
+            />
+          </div>
+          <button className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium text-gray-600">
+            <Filter className="w-4 h-4" />
+            Filter Status
+          </button>
         </div>
 
-        {/* Import Preview Dialog */}
-        <Dialog open={importDialogOpen} onOpenChange={(o) => {
-          if (importing) return;
-          setImportDialogOpen(o);
-          if (!o) resetImportState();
-        }}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <FileSpreadsheet className="w-5 h-5 text-primary" />
-                {importing ? 'Mengimport Data...' : importResult ? 'Hasil Import Buku' : `Pratinjau Import — ${importPreview.length} buku`}
-              </DialogTitle>
-            </DialogHeader>
-
-            {importing ? (
-              <div className="space-y-4 py-4">
-                <div className="flex items-center justify-center gap-3">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  <span className="text-sm font-medium text-foreground">
-                    {importProgress.current} / {importProgress.total} buku diproses
-                  </span>
-                </div>
-                <Progress value={importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0} />
-                <p className="text-xs text-center text-muted-foreground">
-                  Jangan tutup halaman ini selama proses import berlangsung
-                </p>
-              </div>
-            ) : importResult ? (
-              <div className="space-y-4 py-2">
-                <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
-                  <p className="text-sm font-medium text-foreground">Import selesai</p>
-                  <div className="flex flex-wrap gap-2 text-sm">
-                    <Badge variant="secondary">Berhasil: {importResult.success}</Badge>
-                    <Badge variant={importResult.failed > 0 ? 'destructive' : 'outline'}>
-                      Gagal: {importResult.failed}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Data buku yang berhasil diimport sudah tersimpan dan daftar buku telah dimuat ulang.
-                  </p>
-                </div>
-                <div className="flex justify-end">
-                  <Button variant="gradient" onClick={() => { setImportDialogOpen(false); resetImportState(); }}>
-                    Tutup
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead><tr className="border-b bg-muted/30">
-                      <th className="text-left p-2 font-medium text-muted-foreground">Judul</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground">Penulis</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground">ISBN</th>
-                      <th className="text-center p-2 font-medium text-muted-foreground">Stok</th>
-                    </tr></thead>
-                    <tbody>
-                      {importPreview.slice(0, 20).map((b, i) => (
-                        <tr key={i} className="border-b">
-                          <td className="p-2 font-medium text-foreground">{b.title}</td>
-                          <td className="p-2 text-muted-foreground">{b.author}</td>
-                          <td className="p-2 text-muted-foreground font-mono text-xs">{b.isbn}</td>
-                          <td className="p-2 text-center">{b.stock}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {importPreview.length > 20 && <p className="text-xs text-muted-foreground p-2">...dan {importPreview.length - 20} buku lainnya</p>}
-                </div>
-                <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => { setImportDialogOpen(false); resetImportState(); }}>Batal</Button>
-                  <Button variant="gradient" onClick={confirmImport}>Import {importPreview.length} Buku</Button>
-                </div>
-              </>
-            )}
-          </DialogContent>
-        </Dialog>
-
-        {/* Booking Dialog for siswa/guru */}
-        <Dialog open={bookingDialogOpen} onOpenChange={setBookingDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Send className="w-5 h-5 text-primary" />
-                Ajukan Peminjaman
-              </DialogTitle>
-            </DialogHeader>
-            {bookingBook && (
-              <form onSubmit={submitBooking} className="space-y-4">
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border">
-                  <div className="w-10 h-12 rounded bg-primary/10 flex items-center justify-center">
-                    <BookOpen className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground text-sm">{bookingBook.title}</p>
-                    <p className="text-xs text-muted-foreground">{bookingBook.author} • Tersedia: {bookingBook.available}</p>
-                  </div>
-                </div>
-                {user?.role === 'guru' && (
-                  <div>
-                    <label className="text-sm font-medium block mb-1.5">Durasi Pinjam (hari)</label>
-                    <select value={bookingDuration} onChange={e => setBookingDuration(e.target.value)} className="w-full h-9 rounded-md border bg-background px-3 text-sm">
-                      <option value="7">7 hari</option>
-                      <option value="10">10 hari</option>
-                      <option value="14">14 hari</option>
-                    </select>
-                  </div>
-                )}
-                <div>
-                  <label className="text-sm font-medium block mb-1.5">Alasan Peminjaman</label>
-                  <Textarea value={bookingReason} onChange={e => setBookingReason(e.target.value)} placeholder="Tuliskan alasan peminjaman..." rows={3} className="resize-none" required />
-                </div>
-                <Button type="submit" variant="gradient" className="w-full">
-                  <Send className="w-4 h-4 mr-1" /> Kirim Pengajuan
-                </Button>
-              </form>
-            )}
-          </DialogContent>
-        </Dialog>
-
-        <div className="search-bar">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Cari buku..." className="pl-9" />
-          </div>
-          <Select value={categoryFilter} onValueChange={v => { setCategoryFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-44"><SelectValue placeholder="Kategori" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Kategori</SelectItem>
-              {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          {canEdit && (
-            <Button size="sm" variant="ghost" onClick={downloadTemplate} className="text-xs">
-              <Download className="w-3.5 h-3.5 mr-1" /> Template
-            </Button>
-          )}
-        </div>
-
-        {canEdit && (
-          <BulkSelectionToolbar
-            selectedCount={selection.selectedIds.length}
-            totalCount={paginated.length}
-            allSelected={selection.allSelected}
-            partiallySelected={selection.partiallySelected}
-            onToggleAll={selection.toggleAll}
-            onDelete={handleBulkDelete}
-            selectionLabel="Pilih semua buku di halaman ini"
-          />
-        )}
-
-        {loading ? (
-          <div className="text-center text-muted-foreground py-8">Memuat data...</div>
-        ) : (
-          <div className="data-table-wrapper">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/30">
-                    {canEdit && (
-                      <th className="p-3 text-center font-medium text-muted-foreground">
-                        <Checkbox
-                          checked={selection.allSelected ? true : selection.partiallySelected ? 'indeterminate' : false}
-                          onCheckedChange={(checked) => selection.toggleAll(checked === true)}
-                          aria-label="Pilih semua buku"
-                        />
-                      </th>
-                    )}
-                    <th className="text-left p-3 font-medium text-muted-foreground">Judul</th>
-                    <th className="text-left p-3 font-medium text-muted-foreground">Penulis</th>
-                    <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Kategori</th>
-                    <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">ISBN</th>
-                    <th className="text-center p-3 font-medium text-muted-foreground">Stok</th>
-                    <th className="text-center p-3 font-medium text-muted-foreground">Tersedia</th>
-                    <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Rak</th>
-                    <th className="text-right p-3 font-medium text-muted-foreground">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginated.length === 0 ? (
-                    <tr><td colSpan={canEdit ? 9 : 8} className="p-8 text-center text-muted-foreground">Belum ada buku.</td></tr>
-                  ) : paginated.map(b => (
-                    <tr key={b.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
-                      {canEdit && (
-                        <td className="p-3 text-center">
-                          <Checkbox checked={selection.isSelected(b.id)} onCheckedChange={() => selection.toggleOne(b.id)} aria-label={`Pilih ${b.title}`} />
-                        </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="text-xs text-gray-500 uppercase bg-gray-50/80 border-b border-gray-100">
+              <tr>
+                <th className="px-6 py-4 font-semibold">No</th>
+                <th className="px-6 py-4 font-semibold">Judul Buku</th>
+                <th className="px-6 py-4 font-semibold">Penerbit</th>
+                <th className="px-6 py-4 font-semibold">Jenis</th>
+                <th className="px-6 py-4 font-semibold">Stok & Status</th>
+                <th className="px-6 py-4 font-semibold text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 bg-white">
+              {filteredBooks.map((book, idx) => (
+                <tr key={book.id} className="hover:bg-gray-50/50 transition-colors group">
+                  <td className="px-6 py-4 text-gray-500 font-medium">{idx + 1}</td>
+                  <td className="px-6 py-4">
+                    <p className="font-semibold text-gray-900 line-clamp-1">{book.judul}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{book.pengarang !== '-' ? book.pengarang : 'Tanpa Pengarang'}</p>
+                  </td>
+                  <td className="px-6 py-4 text-gray-600">{book.penerbit}</td>
+                  <td className="px-6 py-4">
+                    <span className="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-md text-xs font-medium">
+                      {book.jenis}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <span className="font-bold text-gray-700 w-6">{book.jumlah}</span>
+                      {book.jumlah === 0 ? (
+                        <span className="badge badge-destructive">Habis</span>
+                      ) : book.jumlah < 10 ? (
+                        <span className="badge badge-warning">Terbatas</span>
+                      ) : (
+                        <span className="badge badge-success">Tersedia</span>
                       )}
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-10 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
-                            <BookOpen className="w-4 h-4 text-primary" />
-                          </div>
-                          <span className="font-medium text-foreground">{b.title}</span>
-                        </div>
-                      </td>
-                      <td className="p-3 text-muted-foreground">{b.author}</td>
-                      <td className="p-3 hidden md:table-cell"><Badge variant="outline" className="text-xs">{getCategoryName(b.category_id)}</Badge></td>
-                      <td className="p-3 hidden lg:table-cell text-muted-foreground font-mono text-xs">{b.isbn}</td>
-                      <td className="p-3 text-center font-medium">{b.stock}</td>
-                      <td className="p-3 text-center">
-                        <span className={b.available > 0 ? 'text-success font-medium' : 'text-destructive font-medium'}>{b.available}</span>
-                      </td>
-                      <td className="p-3 hidden md:table-cell text-muted-foreground">{b.shelf_location}</td>
-                      <td className="p-3 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {(user?.role === 'siswa' || user?.role === 'guru') && b.available > 0 && (
-                            <Button variant="outline" size="sm" onClick={() => handleBooking(b)} className="text-primary hover:text-primary">
-                              <Send className="w-3.5 h-3.5 mr-1" /> Pinjam
-                            </Button>
-                          )}
-                          {canEdit && (
-                            <>
-                              <Button variant="ghost" size="sm" onClick={() => { setEditBook(b); setDialogOpen(true); }}>
-                                <Edit className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handleDelete(b.id)} className="text-destructive hover:text-destructive">
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between p-3 border-t">
-                <p className="text-xs text-muted-foreground">{filtered.length} buku ditemukan</p>
-                <div className="flex gap-1">
-                {Array.from({ length: Math.min(totalPages, 10) }, (_, i) => (
-                    <Button key={i} variant={page === i + 1 ? 'default' : 'outline'} size="sm" className="w-8 h-8 p-0" onClick={() => setPage(i + 1)}>{i + 1}</Button>
-                  ))}
-                  {totalPages > 10 && <span className="text-xs text-muted-foreground self-center px-1">...</span>}
-                </div>
-              </div>
-            )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <button className="p-2 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+                      <MoreHorizontal className="w-5 h-5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              
+              {filteredBooks.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                    Buku tidak ditemukan.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        
+        <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between text-sm text-gray-500">
+          <span>Menampilkan {filteredBooks.length} dari {initialBooks.length} buku</span>
+          <div className="flex gap-1">
+            <button className="px-3 py-1.5 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50 font-medium" disabled>Sebelumnya</button>
+            <button className="px-3 py-1.5 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 font-medium">Selanjutnya</button>
           </div>
-        )}
+        </div>
       </div>
     </AppLayout>
   );
-};
-
-export default Books;
+}

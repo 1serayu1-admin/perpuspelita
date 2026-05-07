@@ -95,7 +95,7 @@ export default function Users() {
               <td style={{ padding: 10 }}>
                 <select
                   value={user.role}
-                  onChange={(e) => assignRole(user.id, e.target.value)}
+                  onChange={(e) => assignRole(user.id, e.target.value as Role)}
                   style={{ padding: 5 }}
                 >
                   <option value="admin">admin</option>
