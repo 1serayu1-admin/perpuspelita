@@ -16,8 +16,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    /* Light Blue (Biru Muda) */
-    --primary: 200 95% 55%;
+    /* Light Blue (Biru Muda) - Sangat Cerah */
+    --primary: 195 100% 48%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 210 40% 96.1%;
@@ -29,22 +29,22 @@
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
 
-    /* Red (Merah) */
-    --destructive: 0 84% 60%;
+    /* Red (Merah) - Sangat Cerah */
+    --destructive: 350 100% 60%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 200 95% 55%;
+    --ring: 195 100% 48%;
 
     --radius: 1rem;
 
-    /* Green (Hijau) */
-    --success: 142 71% 45%;
+    /* Green (Hijau) - Sangat Cerah */
+    --success: 140 85% 45%;
     --success-foreground: 0 0% 100%;
     
-    /* Yellow (Kuning) */
-    --warning: 45 93% 47%;
+    /* Yellow (Kuning) - Sangat Cerah */
+    --warning: 45 100% 50%;
     --warning-foreground: 0 0% 100%;
     
     /* Light Blue for Info */

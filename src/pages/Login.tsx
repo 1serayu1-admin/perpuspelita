@@ -48,7 +48,7 @@ export default function Login() {
               <BookOpen className="w-8 h-8" />
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">Selamat Datang</h1>
-            <p className="text-gray-500 mt-2">Masuk ke sistem Serayu Digital Library</p>
+            <p className="text-gray-500 mt-2">Masuk ke sistem Perpustakaan Digital SMK Pelita</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6 mt-8">
@@ -114,7 +114,7 @@ export default function Login() {
         <div className="absolute inset-0 flex flex-col items-center justify-center p-12 text-center z-10 backdrop-blur-[2px]">
           <div className="p-10 rounded-[2rem] bg-white/40 border border-white/60 shadow-2xl backdrop-blur-md max-w-lg transition-transform duration-500 hover:scale-[1.02]">
             <h2 className="text-4xl font-extrabold text-gray-900 mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-success">
-              Perpustakaan Digital
+              Perpustakaan SMK Pelita
             </h2>
             <p className="text-gray-700 text-lg leading-relaxed font-medium">
               Eksplorasi ribuan buku, pinjam dengan mudah, dan manfaatkan asisten AI cerdas untuk menemani belajar Anda.
