@@ -10,7 +10,9 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { role, loading, isAuthenticated } = useAuth();
+  const { role, loading, user, isAuthenticated } = useAuth();
+
+  console.log("AUTH DEBUG", { loading, user, role, isAuthenticated });
 
   if (loading) {
     return (
@@ -25,9 +27,14 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     return <Navigate to="/login" replace />;
   }
 
+  // Fallback role jika null/undefined
+  const safeRole = user?.appRole || user?.role || role || "siswa" as AppRole;
+  
+  console.log("SAFE ROLE", { safeRole, userAppRole: user?.appRole, userRole: user?.role, contextRole: role });
+
   // Jika tidak ada allowedRoles, semua role yang terautentikasi boleh akses
   if (allowedRoles && allowedRoles.length > 0) {
-    const isAllowed = role && allowedRoles.includes(role);
+    const isAllowed = safeRole && allowedRoles.includes(safeRole);
 
     if (!isAllowed) {
       return (
@@ -39,7 +46,7 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
             <h2 className="text-2xl font-bold text-gray-900">Akses Ditolak</h2>
             <p className="text-gray-500">
               Maaf, role Anda saat ini{' '}
-              <strong className="text-gray-900 uppercase">({role || 'NONE'})</strong>{' '}
+              <strong className="text-gray-900 uppercase">({safeRole || 'NONE'})</strong>{' '}
               tidak memiliki izin untuk mengakses halaman ini.
             </p>
             <button
