@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSupabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { BookOpen, KeyRound, Mail, Loader2, UserPlus, LogIn } from 'lucide-react';
+import { BookOpen, KeyRound, Mail, Loader2, UserPlus, LogIn, User } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Login() {
@@ -13,19 +13,25 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  // Helper function to detect if input is email or username
+  const isEmail = (input: string) => input.includes('@');
+
   // console.log("APP VERSION: BUILD-TEST-001"); // Suppressed for demo
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      toast.error('Email dan password wajib diisi');
+      toast.error('Username dan password wajib diisi');
       return;
     }
+
+    // Convert username to internal email if not email format
+    const loginEmail = isEmail(email) ? email : `${email}@internal.local`;
 
     console.time("LOGIN_FLOW");
     setIsLoading(true);
     try {
-      const { success, message } = await login(email, password);
+      const { success, message } = await login(loginEmail, password);
 
       if (!success) throw new Error(message || 'Gagal login');
       
@@ -77,7 +83,7 @@ export default function Login() {
 
   const fillDemo = async () => {
     setEmail('1serayu1@gmail.com');
-    setPassword('Serayu123!!');
+    setPassword('Demo123!!');
     setIsLoading(true);
     try {
       const { success, message } = await login('1serayu1@gmail.com', 'Serayu123!!');
@@ -112,17 +118,17 @@ export default function Login() {
           <form onSubmit={isSignUp ? handleSignUp : handleLogin} className="space-y-6 mt-8">
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-2">Email</label>
+                <label className="text-sm font-medium text-gray-700 block mb-2">Username</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                    <Mail className="h-5 w-5" />
+                    <User className="h-5 w-5" />
                   </div>
                   <input
-                    type="email"
+                    type="text"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-gray-50 focus:bg-white outline-none"
-                    placeholder="nama@sekolah.com"
+                    placeholder="admin123 atau nama@sekolah.com"
                     disabled={isLoading}
                   />
                 </div>
