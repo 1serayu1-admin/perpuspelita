@@ -27,44 +27,47 @@ export function onAuthStateChange(callback: (event: string, session: any) => voi
 
 export async function getUserRole(userId: string) {
   const supabase = getSupabase();
-  if (!supabase) return {
-    role: "siswa" as AppRole,
-    schoolId: null,
-    profile: null
-  };
+
+  if (!supabase) {
+    return {
+      role: "siswa",
+      schoolId: null,
+      profile: null
+    };
+  }
 
   try {
-    // Get profile
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
+    // Ambil role saja dulu (cepat)
+    const { data, error } = await Promise.race([
+      supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .maybeSingle(),
 
-    // Get role
-    const { data: roleData, error: roleError } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId)
-      .maybeSingle();
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), 2500)
+      )
+    ]) as any;
 
-    if (roleError || !roleData) {
+    if (error || !data) {
       return {
-        role: "siswa" as AppRole,
-        schoolId: profile?.school_id || null,
-        profile: profile
+        role: "siswa",
+        schoolId: null,
+        profile: null
       };
     }
 
     return {
-      role: roleData.role as AppRole,
-      schoolId: profile?.school_id || null,
-      profile: profile
+      role: data.role || "siswa",
+      schoolId: null,
+      profile: null
     };
-  } catch (error) {
-    console.error('getUserRole error:', error);
+  } catch (err) {
+    console.error("getUserRole fail:", err);
+
     return {
-      role: "siswa" as AppRole,
+      role: "siswa",
       schoolId: null,
       profile: null
     };
