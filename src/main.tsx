@@ -60,7 +60,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
             {/* Semua role terautentikasi */}
-            <Route path="/dashboard"     element={<ProtectedRoute allowedRoles={ROLES.all}><Dashboard /></ProtectedRoute>} />
+            <Route path="/dashboard"     element={<Dashboard />} />
             <Route path="/books"         element={<ProtectedRoute allowedRoles={ROLES.all}><Books /></ProtectedRoute>} />
             <Route path="/tanya-ai"      element={<ProtectedRoute allowedRoles={ROLES.all}><TanyaAI /></ProtectedRoute>} />
             <Route path="/profil"        element={<ProtectedRoute allowedRoles={ROLES.all}><Profil /></ProtectedRoute>} />
