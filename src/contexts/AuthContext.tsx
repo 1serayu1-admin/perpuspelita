@@ -25,68 +25,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const role = user?.appRole || null;
 
   const initSession = useCallback(async () => {
-    const supabase = getSupabase();
-    if (!supabase) {
-      setLoading(false);
-      return;
-    }
+    setLoading(true);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    // Handle Demo Bypass from LocalStorage
-    const isDemo = localStorage.getItem('serayu_demo_mode') === 'true';
-    if (isDemo && !session) {
-      setUser({
-        id: 'demo-super-admin-id',
-        email: '1serayu1@gmail.com',
-        name: 'Demo Super Admin',
-        role: 'global_super_admin',
-        appRole: 'global_super_admin',
-        schoolId: undefined
-      });
-      setLoading(false);
-      return;
-    }
+    try {
+      const supabase = getSupabase();
 
-    if (session) {
-      try {
-        const userRoleData = await getUserRole(session.user.id);
-        if (userRoleData && userRoleData.role) {
-          setUser({
-            id: session.user.id,
-            email: session.user.email ?? '',
-            name: userRoleData.profile?.name || session.user.email?.split('@')[0] || 'User',
-            role: userRoleData.role,
-            appRole: userRoleData.role,
-            schoolId: userRoleData.schoolId || undefined,
-          });
-        } else {
-          // Fallback if no role data
-          setUser({
-            id: session.user.id,
-            email: session.user.email ?? '',
-            name: session.user.email?.split('@')[0] || 'User',
-            role: 'siswa',
-            appRole: 'siswa',
-            schoolId: undefined,
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching user role:', error);
-        // Fallback on error
+      if (!supabase) {
+        setUser(null);
+        return;
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const isDemo =
+        localStorage.getItem("serayu_demo_mode") === "true";
+
+      if (isDemo && !session) {
         setUser({
-          id: session.user.id,
-          email: session.user.email ?? '',
-          name: session.user.email?.split('@')[0] || 'User',
-          role: 'siswa' as AppRole,
-          appRole: 'siswa' as AppRole,
+          id: "demo-super-admin-id",
+          email: "1serayu1@gmail.com",
+          name: "Demo Super Admin",
+          role: "global_super_admin",
+          appRole: "global_super_admin",
           schoolId: undefined,
         });
+        return;
       }
-    } else {
+
+      if (!session) {
+        setUser(null);
+        return;
+      }
+
+      let role = "siswa" as AppRole;
+      let schoolId;
+      let profile = null;
+
+      try {
+        const roleData = await Promise.race([
+          getUserRole(session.user.id),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("timeout")), 4000)
+          ),
+        ]) as any;
+
+        role = roleData?.role || ("siswa" as AppRole);
+        schoolId = roleData?.schoolId;
+        profile = roleData?.profile;
+      } catch (e) {
+        console.error("Role timeout/error:", e);
+      }
+
+      setUser({
+        id: session.user.id,
+        email: session.user.email ?? "",
+        name:
+          profile?.name ||
+          session.user.email?.split("@")[0] ||
+          "User",
+        role,
+        appRole: role,
+        schoolId: schoolId || undefined,
+      });
+    } catch (err) {
+      console.error("initSession error:", err);
       setUser(null);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -97,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } =
       supabase.auth.onAuthStateChange(async (_event, session) => {
+        setLoading(true);
         try {
           if (session) {
             localStorage.removeItem("serayu_demo_mode");
@@ -106,7 +115,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             let profile = null;
 
             try {
-              const roleData = await getUserRole(session.user.id);
+              const roleData = await Promise.race([
+                getUserRole(session.user.id),
+                new Promise((_, reject) =>
+                  setTimeout(() => reject(new Error("timeout")), 4000)
+                ),
+              ]) as any;
+
               fetchedRole = roleData?.role || ("siswa" as AppRole);
               schoolId = roleData?.schoolId;
               profile = roleData?.profile;
@@ -134,6 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error("Auth listener error:", err);
           setUser(null);
         } finally {
+          console.log("AUTH LOADING FIX", { loading, user });
           setLoading(false);
         }
       });
