@@ -10,7 +10,7 @@ import {
   ArrowUpRight,
   Clock,
   CheckCircle2,
-  Sparkles
+  Star // Temporary replacement for Sparkles
 } from 'lucide-react';
 import {
   LineChart,
@@ -209,7 +209,7 @@ export default function Dashboard() {
                 <p className="text-[11px] mt-2 leading-relaxed opacity-90">Tanya AI dapat membantu Anda mencari buku atau membuat laporan perpustakaan lebih cepat!</p>
                 <button className="mt-4 bg-white text-primary text-[11px] font-bold px-4 py-2 rounded-xl hover:bg-opacity-90 transition-all">Mulai Tanya AI</button>
               </div>
-              <Sparkles className="absolute bottom-[-10px] right-[-10px] w-24 h-24 opacity-10 rotate-12" />
+              <Star className="absolute bottom-[-10px] right-[-10px] w-24 h-24 opacity-10 rotate-12" />
             </div>
           </div>
         </div>

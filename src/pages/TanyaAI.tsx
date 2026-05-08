@@ -1,6 +1,6 @@
 import { AppLayout } from '@/layouts/AppLayout';
 import { useState } from 'react';
-import { Send, User, Bot, Sparkles } from 'lucide-react';
+import { Send, User, Bot, Star } from 'lucide-react';
 import { sendChatMessage, ChatMessage } from '@/lib/streamChat';
 import { toast } from 'sonner';
 
@@ -36,7 +36,7 @@ export default function TanyaAI() {
       <div className="flex flex-col h-[calc(100vh-12rem)] max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-primary" />
+            <Star className="w-6 h-6 text-primary" />
             Tanya AI
           </h1>
           {quota !== null && (
