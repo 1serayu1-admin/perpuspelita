@@ -25,6 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const role = user?.appRole || null;
 
   const initSession = useCallback(async () => {
+    console.log("AUTH STEP", { loading, user: null, role: null, isAuthenticated: false });
     setLoading(true);
 
     try {
@@ -32,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!supabase) {
         setUser(null);
+        setLoading(false);
         return;
       }
 
@@ -51,44 +53,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           appRole: "global_super_admin",
           schoolId: undefined,
         });
+        setLoading(false);
         return;
       }
 
       if (!session) {
         setUser(null);
+        setLoading(false);
         return;
       }
 
-      let role = "siswa" as AppRole;
-      let schoolId;
-      let profile = null;
+      // IMMEDIATE FALLBACK - tidak tunggu getUserRole()
+      setUser({
+        id: session.user.id,
+        email: session.user.email ?? "",
+        name: session.user.email?.split("@")[0] || "User",
+        role: "siswa" as AppRole,
+        appRole: "siswa" as AppRole,
+        schoolId: undefined,
+      });
 
+      // Async role fetch di background
       try {
         const roleData = await Promise.race([
           getUserRole(session.user.id),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("timeout")), 4000)
+            setTimeout(() => reject(new Error("timeout")), 2000)
           ),
         ]) as any;
 
-        role = roleData?.role || ("siswa" as AppRole);
-        schoolId = roleData?.schoolId;
-        profile = roleData?.profile;
+        if (roleData?.role) {
+          setUser(prev => prev ? {
+            ...prev,
+            role: roleData.role,
+            appRole: roleData.role,
+            schoolId: roleData.schoolId || undefined,
+          } : prev);
+        }
       } catch (e) {
-        console.error("Role timeout/error:", e);
+        console.error("Background role fetch failed:", e);
       }
 
-      setUser({
-        id: session.user.id,
-        email: session.user.email ?? "",
-        name:
-          profile?.name ||
-          session.user.email?.split("@")[0] ||
-          "User",
-        role,
-        appRole: role,
-        schoolId: schoolId || undefined,
-      });
     } catch (err) {
       console.error("initSession error:", err);
       setUser(null);

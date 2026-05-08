@@ -20,6 +20,7 @@ export default function Login() {
       return;
     }
 
+    console.time("LOGIN_FLOW");
     setIsLoading(true);
     try {
       const { success, message } = await login(email, password);
@@ -31,6 +32,7 @@ export default function Login() {
     } catch (err: any) {
       toast.error(err.message || 'Gagal login');
     } finally {
+      console.timeEnd("LOGIN_FLOW");
       setIsLoading(false);
     }
   };
