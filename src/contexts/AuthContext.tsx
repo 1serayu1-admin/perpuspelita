@@ -24,6 +24,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const role = user?.appRole || null;
 
+  useEffect(() => {
+    console.log("AuthProvider MOUNT");
+    return () => console.log("AuthProvider UNMOUNT");
+  }, []);
+
+  useEffect(() => {
+    console.log("AUTH STATE", { loading, user });
+  }, [loading, user]);
+
   const initSession = useCallback(async () => {
     console.log("AUTH STEP", { loading, user: null, role: null, isAuthenticated: false });
     setLoading(true);
