@@ -1,4 +1,5 @@
 import { getSupabase } from '@/integrations/supabase/client';
+import type { AppRole } from '@/lib/types';
 
 export async function loginWithEmail(email: string, password: string) {
   const supabase = getSupabase();
@@ -26,19 +27,47 @@ export function onAuthStateChange(callback: (event: string, session: any) => voi
 
 export async function getUserRole(userId: string) {
   const supabase = getSupabase();
-  if (!supabase) return null;
+  if (!supabase) return {
+    role: "siswa" as AppRole,
+    schoolId: null,
+    profile: null
+  };
 
-  const { data, error } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', userId)
-    .maybeSingle();
+  try {
+    // Get profile
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-  if (error) {
-    console.error('Role query failed:', error);
-    return null;
+    // Get role
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (roleError || !roleData) {
+      return {
+        role: "siswa" as AppRole,
+        schoolId: profile?.school_id || null,
+        profile: profile
+      };
+    }
+
+    return {
+      role: roleData.role as AppRole,
+      schoolId: profile?.school_id || null,
+      profile: profile
+    };
+  } catch (error) {
+    console.error('getUserRole error:', error);
+    return {
+      role: "siswa" as AppRole,
+      schoolId: null,
+      profile: null
+    };
   }
-
-  return data?.role || null;
 }
 

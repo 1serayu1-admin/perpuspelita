@@ -78,8 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: session.user.id,
           email: session.user.email ?? '',
           name: session.user.email?.split('@')[0] || 'User',
-          role: 'siswa',
-          appRole: 'siswa',
+          role: 'siswa' as AppRole,
+          appRole: 'siswa' as AppRole,
           schoolId: undefined,
         });
       }
@@ -95,25 +95,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const supabase = getSupabase();
     if (!supabase) return;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session) {
-        localStorage.removeItem('serayu_demo_mode');
-        const { role: fetchedRole, schoolId, profile } = await getUserRole(session.user.id);
-        setUser({
-          id: session.user.id,
-          email: session.user.email ?? '',
-          name: profile?.name || session.user.email?.split('@')[0] || 'User',
-          role: (fetchedRole as AppRole) || 'siswa',
-          appRole: (fetchedRole as AppRole) || 'siswa',
-          schoolId: schoolId || undefined,
-        });
-      } else {
-        if (localStorage.getItem('serayu_demo_mode') !== 'true') {
+    const { data: { subscription } } =
+      supabase.auth.onAuthStateChange(async (_event, session) => {
+        try {
+          if (session) {
+            localStorage.removeItem("serayu_demo_mode");
+
+            let fetchedRole = "siswa" as AppRole;
+            let schoolId;
+            let profile = null;
+
+            try {
+              const roleData = await getUserRole(session.user.id);
+              fetchedRole = roleData?.role || ("siswa" as AppRole);
+              schoolId = roleData?.schoolId;
+              profile = roleData?.profile;
+            } catch (err) {
+              console.error("getUserRole gagal:", err);
+            }
+
+            setUser({
+              id: session.user.id,
+              email: session.user.email ?? "",
+              name:
+                profile?.name ||
+                session.user.email?.split("@")[0] ||
+                "User",
+              role: fetchedRole,
+              appRole: fetchedRole,
+              schoolId: schoolId || undefined,
+            });
+          } else {
+            if (localStorage.getItem("serayu_demo_mode") !== "true") {
+              setUser(null);
+            }
+          }
+        } catch (err) {
+          console.error("Auth listener error:", err);
           setUser(null);
+        } finally {
+          setLoading(false);
         }
-      }
-      setLoading(false);
-    });
+      });
 
     return () => subscription.unsubscribe();
   }, [initSession]);
