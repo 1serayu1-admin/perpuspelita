@@ -27,8 +27,14 @@ export default function Books() {
 
   const handleDownloadTemplate = () => {
     const headers = "No,Judul Buku,Penyusun/Pengarang,Penerbit,Jenis Buku,Jumlah,Sumber\n";
-    const sampleRow = "1,Dasar Desain Grafis kelas X,-,Erlangga,Non Fiksi,20,BOS\n";
-    const csvContent = headers + sampleRow;
+    const sampleRows = [
+      "1,Dasar Desain Grafis kelas X,Tim Pengajar,Erlangga,Non Fiksi,20,BOS",
+      "2,Matematika untuk SMA Kelas XI,Dr. Ahmad Wijaya,Gramedia,Fiksi,15,Dana BOS",
+      "3,Fisika Dasar,Prof. Budi Santoso,Andi Offset,Non Fiksi,10,Donasi",
+      "4,Bahasa Indonesia Kelas XII,Siti Nurjanah,Yudhistira,Non Fiksi,25,BOS",
+      "5,Sejarah Indonesia,Dr. Muhammad Yusuf,Erlangga,Fiksi,18,Dana BOS"
+    ].join('\n');
+    const csvContent = headers + sampleRows + '\n\n# Catatan:\n# - Kolom "No" opsional (nomor urut)\n# - "Judul Buku" wajib diisi\n# - "Penyusun/Pengarang" bisa diisi "-" jika tidak ada\n# - "Penerbit" bisa diisi "-" jika tidak ada\n# - "Jenis Buku" akan membuat kategori otomatis\n# - "Jumlah" harus berupa angka\n# - "Sumber" bisa diisi: BOS, Donasi, Pembelian, dll';
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
@@ -63,31 +69,98 @@ export default function Books() {
         const supabase = getSupabase();
         if (!supabase) throw new Error('Database connection failed');
 
-        // Get school_id and category_id
-        const { data: school } = await supabase.from('schools').select('id').limit(1).single();
-        let { data: category } = await supabase.from('categories').select('id').eq('name', 'Non Fiksi').limit(1).single();
+        // Use current user from AuthContext
+        if (!authUser) throw new Error('User not authenticated');
+        const user = authUser;
+
+        // Get school_id from AuthContext or fallback to profile lookup
+        let schoolId = authUser?.schoolId;
         
-        if (!category) {
-          const { data: newCat } = await supabase.from('categories').insert({ name: 'Non Fiksi', school_id: school?.id }).select().single();
-          category = newCat;
+        if (!schoolId) {
+          // Fallback to profile lookup
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('school_id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (profile?.school_id) {
+            schoolId = profile.school_id;
+          } else {
+            // Fallback for global_super_admin - get first school
+            const { data: firstSchool } = await supabase
+              .from('schools')
+              .select('id')
+              .limit(1)
+              .maybeSingle();
+            schoolId = firstSchool?.id;
+          }
         }
 
-        const booksToInsert = data.map((row: any) => ({
-          school_id: school?.id,
-          title: row['Judul Buku'] || row['judul'] || 'Tanpa Judul',
-          author: row['Penyusun/Pengarang'] || row['pengarang'] || '-',
-          publisher: row['Penerbit'] || row['penerbit'] || '-',
-          category_id: category?.id,
-          stock: parseInt(row['Jumlah'] || row['jumlah'] || '0'),
-          available: parseInt(row['Jumlah'] || row['jumlah'] || '0'),
-          source: row['Sumber'] || row['sumber'] || '-',
-        }));
+        if (!schoolId) {
+          throw new Error('Tidak dapat menentukan sekolah. Pastikan Anda terhubung dengan sekolah.');
+        }
 
-        const { error } = await supabase.from('books').insert(booksToInsert);
+        // Process books with proper field mapping
+        const booksToInsert = data.map((row: any) => {
+          const stock = parseInt(row['Jumlah'] || '0');
+          const categoryType = row['Jenis Buku'] || 'Non Fiksi';
+          
+          return {
+            school_id: schoolId,
+            title: row['Judul Buku'] || 'Tanpa Judul',
+            author: row['Penyusun/Pengarang'] || '-',
+            publisher: row['Penerbit'] || '-',
+            category_id: null, // Will be set after category lookup
+            stock: stock,
+            available: stock,
+            source: row['Sumber'] || '-',
+            year: new Date().getFullYear(), // Default to current year
+            isbn: '', // Empty for now
+            shelf_location: '', // Empty for now
+            categoryType: categoryType, // Store for category lookup
+          };
+        });
+
+        // Handle categories for each book
+        const processedBooks = [];
+        for (const book of booksToInsert) {
+          // Get or create category
+          let category = null;
+          const { data: existingCategory } = await supabase
+            .from('categories')
+            .select('id')
+            .eq('name', book.categoryType)
+            .eq('school_id', schoolId)
+            .limit(1)
+            .maybeSingle();
+          
+          if (existingCategory) {
+            category = existingCategory;
+          } else {
+            const { data: newCat } = await supabase
+              .from('categories')
+              .insert({ name: book.categoryType, school_id: schoolId })
+              .select()
+              .single();
+            category = newCat;
+          }
+
+          const { category_id, ...cleanBook } = book;
+          processedBooks.push({
+            ...cleanBook,
+            category_id: category?.id,
+          });
+        }
+
+        const { error } = await supabase.from('books').insert(processedBooks);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Insert error:', error);
+          throw error;
+        }
 
-        toast.success(`Berhasil mengimpor ${booksToInsert.length} buku!`);
+        toast.success(`Berhasil mengimpor ${processedBooks.length} buku!`);
         refetch();
       } catch (err: any) {
         console.error('Upload error:', err);

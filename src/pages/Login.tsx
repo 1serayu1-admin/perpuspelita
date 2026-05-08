@@ -13,7 +13,7 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  console.log("APP VERSION: BUILD-TEST-001");
+  // console.log("APP VERSION: BUILD-TEST-001"); // Suppressed for demo
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -39,45 +39,51 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [resolvedSchoolId, setResolvedSchoolId] = useState<string | null>(null);
 
   const fetchSettings = useCallback(async () => {
-    let schoolId = user?.schoolId || null;
+    try {
+      let schoolId = user?.schoolId || null;
 
-    // For global_super_admin without a school, fetch the first school
-    if (!schoolId && user?.appRole === 'global_super_admin') {
-      const { data: firstSchool } = await (supabase as any)
-        .from('schools')
-        .select('id')
-        .limit(1)
-        .single();
-      if (firstSchool) {
-        schoolId = firstSchool.id;
+      // For global_super_admin without a school, fetch the first school
+      if (!schoolId && user?.appRole === 'global_super_admin') {
+        const { data: firstSchool, error: schoolError } = await (supabase as any)
+          .from('schools')
+          .select('id')
+          .limit(1)
+          .maybeSingle(); // Use maybeSingle to handle no schools gracefully
+        
+        if (!schoolError && firstSchool) {
+          schoolId = firstSchool.id;
+        }
       }
-    }
 
-    setResolvedSchoolId(schoolId);
+      setResolvedSchoolId(schoolId);
 
-    if (!schoolId) {
+      if (!schoolId) {
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await (supabase as any)
+        .from('schools')
+        .select('name, logo_url, motto, vision, ip_access_mode, allowed_ips')
+        .eq('id', schoolId)
+        .maybeSingle(); // Use maybeSingle to handle missing school gracefully
+
+      if (!error && data) {
+        setSettings(prev => ({
+          ...prev,
+          schoolName: data.name || prev.schoolName,
+          logoUrl: data.logo_url || '',
+          motto: data.motto || '',
+          visi: data.vision || '',
+          ipAccessMode: (data.ip_access_mode as IpAccessMode) || 'open',
+          allowedIps: data.allowed_ips || [],
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching settings:', err);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const { data, error } = await (supabase as any)
-      .from('schools')
-      .select('name, logo_url, motto, vision, ip_access_mode, allowed_ips')
-      .eq('id', schoolId)
-      .single();
-
-    if (!error && data) {
-      setSettings(prev => ({
-        ...prev,
-        schoolName: data.name || prev.schoolName,
-        logoUrl: data.logo_url || '',
-        motto: data.motto || '',
-        visi: data.vision || '',
-        ipAccessMode: (data.ip_access_mode as IpAccessMode) || 'open',
-        allowedIps: data.allowed_ips || [],
-      }));
-    }
-    setLoading(false);
   }, [user?.schoolId, user?.appRole]);
 
   useEffect(() => {

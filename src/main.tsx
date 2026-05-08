@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { SettingsProvider } from '@/contexts/SettingsContext'
 import type { AppRole } from '@/lib/types'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import './index.css'
@@ -53,49 +54,50 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            {/* Public */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <SettingsProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/login" element={<Login />} />
 
-            {/* Semua role terautentikasi */}
-            <Route path="/dashboard"     element={<ProtectedRoute allowedRoles={ROLES.all}><Dashboard /></ProtectedRoute>} />
-            <Route path="/books"         element={<ProtectedRoute allowedRoles={ROLES.all}><Books /></ProtectedRoute>} />
-            <Route path="/tanya-ai"      element={<ProtectedRoute allowedRoles={ROLES.all}><TanyaAI /></ProtectedRoute>} />
-            <Route path="/profil"        element={<ProtectedRoute allowedRoles={ROLES.all}><Profil /></ProtectedRoute>} />
-            <Route path="/install"       element={<ProtectedRoute allowedRoles={ROLES.all}><InstallApp /></ProtectedRoute>} />
+              {/* Semua role terautentikasi */}
+              <Route path="/dashboard"     element={<ProtectedRoute allowedRoles={ROLES.all}><Dashboard /></ProtectedRoute>} />
+              <Route path="/books"         element={<ProtectedRoute allowedRoles={ROLES.all}><Books /></ProtectedRoute>} />
+              <Route path="/tanya-ai"      element={<ProtectedRoute allowedRoles={ROLES.all}><TanyaAI /></ProtectedRoute>} />
+              <Route path="/profil"        element={<ProtectedRoute allowedRoles={ROLES.all}><Profil /></ProtectedRoute>} />
+              <Route path="/install"       element={<ProtectedRoute allowedRoles={ROLES.all}><InstallApp /></ProtectedRoute>} />
 
-            {/* Staff (admin + school_super_admin + guru) */}
-            <Route path="/categories"    element={<ProtectedRoute allowedRoles={ROLES.staff}><Categories /></ProtectedRoute>} />
-            <Route path="/borrow-regular" element={<ProtectedRoute allowedRoles={ROLES.staff}><BorrowRegular /></ProtectedRoute>} />
-            <Route path="/borrow-lesson" element={<ProtectedRoute allowedRoles={ROLES.staff}><BorrowLesson /></ProtectedRoute>} />
-            <Route path="/returns"       element={<ProtectedRoute allowedRoles={ROLES.staff}><Returns /></ProtectedRoute>} />
-            <Route path="/approval"      element={<ProtectedRoute allowedRoles={ROLES.staff}><ApprovalPage /></ProtectedRoute>} />
-            <Route path="/settings"      element={<ProtectedRoute allowedRoles={ROLES.staff}><Settings /></ProtectedRoute>} />
+              {/* Staff (admin + school_super_admin + guru) */}
+              <Route path="/categories"    element={<ProtectedRoute allowedRoles={ROLES.staff}><Categories /></ProtectedRoute>} />
+              <Route path="/borrow-regular" element={<ProtectedRoute allowedRoles={ROLES.staff}><BorrowRegular /></ProtectedRoute>} />
+              <Route path="/borrow-lesson" element={<ProtectedRoute allowedRoles={ROLES.staff}><BorrowLesson /></ProtectedRoute>} />
+              <Route path="/returns"       element={<ProtectedRoute allowedRoles={ROLES.staff}><Returns /></ProtectedRoute>} />
+              <Route path="/approval"      element={<ProtectedRoute allowedRoles={ROLES.staff}><ApprovalPage /></ProtectedRoute>} />
+              <Route path="/settings"      element={<ProtectedRoute allowedRoles={ROLES.staff}><Settings /></ProtectedRoute>} />
 
-            {/* Member (siswa + guru bisa request pinjam) */}
-            <Route path="/borrow-request" element={<ProtectedRoute allowedRoles={ROLES.member}><BorrowRequestPage /></ProtectedRoute>} />
+              {/* Member (siswa + guru bisa request pinjam) */}
+              <Route path="/borrow-request" element={<ProtectedRoute allowedRoles={ROLES.member}><BorrowRequestPage /></ProtectedRoute>} />
 
-            {/* Admin & school_super_admin */}
-            <Route path="/students"      element={<ProtectedRoute allowedRoles={ROLES.admin}><Students /></ProtectedRoute>} />
-            <Route path="/teachers"      element={<ProtectedRoute allowedRoles={ROLES.admin}><Teachers /></ProtectedRoute>} />
-            <Route path="/classes"       element={<ProtectedRoute allowedRoles={ROLES.admin}><Classes /></ProtectedRoute>} />
-            <Route path="/reports"       element={<ProtectedRoute allowedRoles={ROLES.admin}><Reports /></ProtectedRoute>} />
+              {/* Admin & school_super_admin */}
+              <Route path="/students"      element={<ProtectedRoute allowedRoles={ROLES.admin}><Students /></ProtectedRoute>} />
+              <Route path="/teachers"      element={<ProtectedRoute allowedRoles={ROLES.admin}><Teachers /></ProtectedRoute>} />
+              <Route path="/classes"       element={<ProtectedRoute allowedRoles={ROLES.admin}><Classes /></ProtectedRoute>} />
+              <Route path="/reports"       element={<ProtectedRoute allowedRoles={ROLES.admin}><Reports /></ProtectedRoute>} />
 
-            {/* Admin only */}
-            <Route path="/activity-log"  element={<ProtectedRoute allowedRoles={ROLES.superOnly}><ActivityLog /></ProtectedRoute>} />
-            <Route path="/backup"        element={<ProtectedRoute allowedRoles={ROLES.superOnly}><Backup /></ProtectedRoute>} />
-            <Route path="/admin-management" element={<ProtectedRoute allowedRoles={ROLES.superOnly}><AdminManagement /></ProtectedRoute>} />
-            <Route path="/users"         element={<ProtectedRoute allowedRoles={['global_super_admin']}><Users /></ProtectedRoute>} />
-            <Route path="/schools"       element={<ProtectedRoute allowedRoles={ROLES.superOnly}><Schools /></ProtectedRoute>} />
-            <Route path="/security"      element={<ProtectedRoute allowedRoles={ROLES.superOnly}><SecurityPanel /></ProtectedRoute>} />
+              {/* Admin only */}
+              <Route path="/activity-log"  element={<ProtectedRoute allowedRoles={ROLES.superOnly}><ActivityLog /></ProtectedRoute>} />
+              <Route path="/backup"        element={<ProtectedRoute allowedRoles={ROLES.superOnly}><Backup /></ProtectedRoute>} />
+              <Route path="/admin-management" element={<ProtectedRoute allowedRoles={ROLES.superOnly}><AdminManagement /></ProtectedRoute>} />
+              <Route path="/users"         element={<ProtectedRoute allowedRoles={['global_super_admin']}><Users /></ProtectedRoute>} />
+              <Route path="/schools"       element={<ProtectedRoute allowedRoles={ROLES.superOnly}><Schools /></ProtectedRoute>} />
+              <Route path="/security"      element={<ProtectedRoute allowedRoles={ROLES.superOnly}><SecurityPanel /></ProtectedRoute>} />
 
-            {/* 404 */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-        <Toaster richColors position="top-right" />
+              {/* 404 */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+          <Toaster richColors position="top-right" />
+        </SettingsProvider>
       </AuthProvider>
     </QueryClientProvider>
   </React.StrictMode>

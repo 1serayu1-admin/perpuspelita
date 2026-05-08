@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isDemo && !session) {
         setUser({
           id: "demo-super-admin-id",
-          email: "1serayu1@gmail.com",
+          email: "1serayu1@gmail.com", // Default demo email
           name: "Demo Super Admin",
           role: "global_super_admin",
           appRole: "global_super_admin",
@@ -172,12 +172,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [initSession]);
 
   const login = useCallback(async (email: string, password: string) => {
-    // Special bypass for Demo Email
-    if (email === '1serayu1@gmail.com' && password === 'Serayu123!!') {
+    // Special bypass for Demo Emails
+    if ((email === '1serayu1@gmail.com' || email === '1serayu.1@gmail.com') && password === 'Serayu123!!') {
       localStorage.setItem('serayu_demo_mode', 'true');
       setUser({
         id: 'demo-super-admin-id',
-        email: '1serayu1@gmail.com',
+        email: email,
         name: 'Demo Super Admin',
         role: 'global_super_admin',
         appRole: 'global_super_admin',
@@ -188,13 +188,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      console.log('LOGIN ATTEMPT:', { email, password: '***' });
       const { data, error } = await loginWithEmail(email, password);
+      
+      console.log('LOGIN RESPONSE:', { 
+        data: data ? { user: data.user?.id, email: data.user?.email } : null,
+        error: error ? { message: error.message, status: (error as any)?.status || 'unknown' } : null
+      });
+      
       if (!error && data?.user) {
+        console.log('LOGIN SUCCESS:', data.user.id);
         return { success: true };
       }
-      return { success: false, message: error?.message || 'Login gagal' };
-    } catch {
-      return { success: false, message: 'Terjadi kesalahan yang tidak diketahui' };
+      
+      console.error('LOGIN FAILED:', error);
+      return { 
+        success: false, 
+        message: error?.message || 'Login gagal',
+        details: error
+      };
+    } catch (err) {
+      console.error('LOGIN EXCEPTION:', err);
+      return { 
+        success: false, 
+        message: 'Terjadi kesalahan yang tidak diketahui',
+        details: err
+      };
     }
   }, []);
 
