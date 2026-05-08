@@ -12,7 +12,11 @@ interface ProtectedRouteProps {
 export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const { role, loading, user, isAuthenticated } = useAuth();
 
+  console.log("APP VERSION: BUILD-TEST-001");
   console.log("AUTH DEBUG", { loading, user, role, isAuthenticated });
+
+  // TEMPORARY BYPASS FOR TESTING
+  return <>{children}</>;
 
   if (loading) {
     return (
