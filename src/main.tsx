@@ -60,7 +60,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
             {/* Semua role terautentikasi */}
-            <Route path="/dashboard"     element={<Dashboard />} />
+            <Route path="/dashboard"     element={<ProtectedRoute allowedRoles={ROLES.all}><Dashboard /></ProtectedRoute>} />
             <Route path="/books"         element={<ProtectedRoute allowedRoles={ROLES.all}><Books /></ProtectedRoute>} />
             <Route path="/tanya-ai"      element={<ProtectedRoute allowedRoles={ROLES.all}><TanyaAI /></ProtectedRoute>} />
             <Route path="/profil"        element={<ProtectedRoute allowedRoles={ROLES.all}><Profil /></ProtectedRoute>} />
@@ -87,7 +87,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="/activity-log"  element={<ProtectedRoute allowedRoles={ROLES.superOnly}><ActivityLog /></ProtectedRoute>} />
             <Route path="/backup"        element={<ProtectedRoute allowedRoles={ROLES.superOnly}><Backup /></ProtectedRoute>} />
             <Route path="/admin-management" element={<ProtectedRoute allowedRoles={ROLES.superOnly}><AdminManagement /></ProtectedRoute>} />
-            <Route path="/users"         element={<ProtectedRoute allowedRoles={ROLES.superOnly}><Users /></ProtectedRoute>} />
+            <Route path="/users"         element={<ProtectedRoute allowedRoles={['global_super_admin']}><Users /></ProtectedRoute>} />
             <Route path="/schools"       element={<ProtectedRoute allowedRoles={ROLES.superOnly}><Schools /></ProtectedRoute>} />
             <Route path="/security"      element={<ProtectedRoute allowedRoles={ROLES.superOnly}><SecurityPanel /></ProtectedRoute>} />
 

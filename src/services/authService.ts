@@ -37,11 +37,11 @@ export async function getUserRole(userId: string) {
   }
 
   try {
-    // Ambil role saja dulu (cepat)
+    // Ambil role dan school_id (penting untuk school scope)
     const { data, error } = await Promise.race([
       supabase
         .from("user_roles")
-        .select("role")
+        .select("role, school_id")
         .eq("user_id", userId)
         .maybeSingle(),
 
@@ -60,7 +60,7 @@ export async function getUserRole(userId: string) {
 
     return {
       role: data.role || "siswa",
-      schoolId: null,
+      schoolId: data.school_id || null,
       profile: null
     };
   } catch (err) {
