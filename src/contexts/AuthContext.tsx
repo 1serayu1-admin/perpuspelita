@@ -49,15 +49,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (session) {
-      const { role: fetchedRole, schoolId, profile } = await getUserRole(session.user.id);
-      setUser({
-        id: session.user.id,
-        email: session.user.email ?? '',
-        name: profile?.name || session.user.email?.split('@')[0] || 'User',
-        role: (fetchedRole as AppRole) || 'siswa',
-        appRole: (fetchedRole as AppRole) || 'siswa',
-        schoolId: schoolId || undefined,
-      });
+      try {
+        const userRoleData = await getUserRole(session.user.id);
+        if (userRoleData && userRoleData.role) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email ?? '',
+            name: userRoleData.profile?.name || session.user.email?.split('@')[0] || 'User',
+            role: userRoleData.role,
+            appRole: userRoleData.role,
+            schoolId: userRoleData.schoolId || undefined,
+          });
+        } else {
+          // Fallback if no role data
+          setUser({
+            id: session.user.id,
+            email: session.user.email ?? '',
+            name: session.user.email?.split('@')[0] || 'User',
+            role: 'siswa',
+            appRole: 'siswa',
+            schoolId: undefined,
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching user role:', error);
+        // Fallback on error
+        setUser({
+          id: session.user.id,
+          email: session.user.email ?? '',
+          name: session.user.email?.split('@')[0] || 'User',
+          role: 'siswa',
+          appRole: 'siswa',
+          schoolId: undefined,
+        });
+      }
     } else {
       setUser(null);
     }
