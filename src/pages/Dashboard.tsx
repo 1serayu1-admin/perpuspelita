@@ -9,7 +9,8 @@ import {
   TrendingUp, 
   ArrowUpRight,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  Sparkles
 } from 'lucide-react';
 import {
   LineChart,
