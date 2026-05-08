@@ -1,42 +1,59 @@
 import { useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import type { AppRole } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { 
-  LayoutDashboard, 
-  BookOpen, 
-  Users, 
-  GraduationCap, 
-  Library, 
-  History, 
-  Settings as SettingsIcon, 
+import {
+  LayoutDashboard,
+  BookOpen,
+  Users,
+  GraduationCap,
+  Library,
+  Settings as SettingsIcon,
   LogOut,
   Sparkles,
   ShieldCheck,
   FileBarChart,
   School,
-  Database
+  Database,
+  ClipboardCheck,
+  BookMarked,
+  RotateCcw,
+  Tag,
+  BookCopy,
 } from 'lucide-react';
+
+interface MenuItem {
+  label: string;
+  icon: React.ElementType;
+  path: string;
+  roles: AppRole[];
+}
 
 export function AppSidebar() {
   const location = useLocation();
   const { role, logout, user } = useAuth();
 
-  const menuItems = [
-    { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['admin', 'school_super_admin', 'guru', 'siswa'] },
-    { label: 'Katalog Buku', icon: BookOpen, path: '/books', roles: ['admin', 'school_super_admin', 'guru', 'siswa'] },
-    { label: 'Tanya AI', icon: Sparkles, path: '/tanya-ai', roles: ['admin', 'school_super_admin', 'guru', 'siswa'] },
-    { label: 'Peminjaman', icon: Library, path: '/borrow-regular', roles: ['admin', 'school_super_admin', 'guru'] },
-    { label: 'Data Siswa', icon: GraduationCap, path: '/students', roles: ['admin', 'school_super_admin'] },
-    { label: 'Data Guru', icon: Users, path: '/teachers', roles: ['admin', 'school_super_admin'] },
-    { label: 'Laporan', icon: FileBarChart, path: '/reports', roles: ['admin', 'school_super_admin'] },
-    { label: 'Manajemen User', icon: ShieldCheck, path: '/users', roles: ['admin'] },
-    { label: 'Sekolah', icon: School, path: '/schools', roles: ['admin'] },
-    { label: 'Database & Backup', icon: Database, path: '/backup', roles: ['admin'] },
-    { label: 'Pengaturan', icon: SettingsIcon, path: '/settings', roles: ['admin', 'school_super_admin', 'guru'] },
+  const menuItems: MenuItem[] = [
+    { label: 'Dashboard',      icon: LayoutDashboard, path: '/dashboard',       roles: ['admin', 'school_super_admin', 'guru', 'siswa'] },
+    { label: 'Katalog Buku',   icon: BookOpen,        path: '/books',           roles: ['admin', 'school_super_admin', 'guru', 'siswa'] },
+    { label: 'Tanya AI',       icon: Sparkles,        path: '/tanya-ai',        roles: ['admin', 'school_super_admin', 'guru', 'siswa'] },
+    { label: 'Kategori',       icon: Tag,             path: '/categories',      roles: ['admin', 'school_super_admin', 'guru'] },
+    { label: 'Peminjaman',     icon: Library,         path: '/borrow-regular',  roles: ['admin', 'school_super_admin', 'guru'] },
+    { label: 'Pinjam Pelajaran', icon: BookCopy,      path: '/borrow-lesson',   roles: ['admin', 'school_super_admin', 'guru'] },
+    { label: 'Pengembalian',   icon: RotateCcw,       path: '/returns',         roles: ['admin', 'school_super_admin', 'guru'] },
+    { label: 'Persetujuan',    icon: ClipboardCheck,  path: '/approval',        roles: ['admin', 'school_super_admin', 'guru'] },
+    { label: 'Pinjam (Siswa)', icon: BookMarked,      path: '/borrow-request',  roles: ['siswa', 'guru'] },
+    { label: 'Data Siswa',     icon: GraduationCap,   path: '/students',        roles: ['admin', 'school_super_admin'] },
+    { label: 'Data Guru',      icon: Users,           path: '/teachers',        roles: ['admin', 'school_super_admin'] },
+    { label: 'Laporan',        icon: FileBarChart,    path: '/reports',         roles: ['admin', 'school_super_admin'] },
+    { label: 'Manajemen User', icon: ShieldCheck,     path: '/users',           roles: ['admin'] },
+    { label: 'Sekolah',        icon: School,          path: '/schools',         roles: ['admin'] },
+    { label: 'Database & Backup', icon: Database,     path: '/backup',          roles: ['admin'] },
+    { label: 'Pengaturan',     icon: SettingsIcon,    path: '/settings',        roles: ['admin', 'school_super_admin', 'guru'] },
   ];
 
   const filteredMenu = menuItems.filter(item =>
-    item.roles.includes(role)
+    role && item.roles.includes(role)
   );
 
   return (
@@ -62,8 +79,8 @@ export function AppSidebar() {
               to={item.path}
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group",
-                isActive 
-                  ? "bg-primary text-white shadow-md shadow-primary/20" 
+                isActive
+                  ? "bg-primary text-white shadow-md shadow-primary/20"
                   : "text-gray-500 hover:bg-gray-50 hover:text-primary"
               )}
             >
@@ -84,11 +101,11 @@ export function AppSidebar() {
           </div>
           <div className="min-w-0">
             <p className="text-xs font-bold text-gray-900 truncate">{user?.email?.split('@')[0]}</p>
-            <p className="text-[10px] text-gray-500 capitalize">{role?.replace('_', ' ')}</p>
+            <p className="text-[10px] text-gray-500 capitalize">{role?.replace(/_/g, ' ') || 'Pengguna'}</p>
           </div>
         </div>
-        
-        <button 
+
+        <button
           onClick={() => logout()}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-destructive hover:bg-destructive/5 transition-colors"
         >

@@ -28,14 +28,11 @@ export async function getUserRole(userId: string) {
   const supabase = getSupabase();
   if (!supabase) return null;
 
-  // FIX 406: use maybeSingle() instead of single()
   const { data, error } = await supabase
     .from('user_roles')
     .select('role')
     .eq('user_id', userId)
     .maybeSingle();
-
-  console.log('ROLE QUERY:', { userId, data, error: error?.message });
 
   if (error) {
     console.error('Role query failed:', error);
@@ -44,3 +41,4 @@ export async function getUserRole(userId: string) {
 
   return data?.role || null;
 }
+

@@ -1,56 +1,57 @@
-import { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useMemo, useCallback, useEffect, ReactNode } from 'react';
+import type { User } from '@supabase/supabase-js';
 import { loginWithEmail, logoutUser, getUserRole } from '@/services/authService';
 import { getSupabase } from '@/integrations/supabase/client';
+import type { AppRole } from '@/lib/types';
 
-const AuthContext = createContext(null);
+// Re-export untuk komponen yang import AppRole dari AuthContext
+export type { AppRole };
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [role, setRole] = useState(null);
+interface AuthContextValue {
+  user: User | null;
+  role: AppRole | null;
+  loading: boolean;
+  isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  logout: () => Promise<void>;
+  hasRole: (roles: AppRole[]) => boolean;
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const supabase = getSupabase();
-    if (!supabase) return;
-
-    // DEBUG: Hard test query
-    (async () => {
-      const { data: session } = await supabase.auth.getSession();
-      console.log('SESSION USER:', session?.session?.user);
-
-      const userId = session?.session?.user?.id;
-      if (userId) {
-        const { data, error } = await supabase
-          .from('user_roles')
-          .select('*')
-          .eq('user_id', userId)
-          .maybeSingle();
-
-        console.log('RAW ROLE QUERY:', { userId, data, error: error?.message });
-      }
-    })();
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
 
     // Initial session load on component mount
     (async () => {
       const { data } = await supabase.auth.getSession();
-      const user = data?.session?.user ?? null;
-      setUser(user);
+      const sessionUser = data?.session?.user ?? null;
+      setUser(sessionUser);
 
-      if (user) {
-        const role = await getUserRole(user.id);
-        setRole(role || 'siswa');
+      if (sessionUser) {
+        const fetchedRole = await getUserRole(sessionUser.id);
+        setRole((fetchedRole as AppRole) || 'siswa');
       }
       setLoading(false);
     })();
 
     // Auth state listener for login/logout events
     const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
-      const user = session?.user ?? null;
-      setUser(user);
+      const sessionUser = session?.user ?? null;
+      setUser(sessionUser);
 
-      if (user) {
-        const role = await getUserRole(user.id);
-        setRole(role || 'siswa');
+      if (sessionUser) {
+        const fetchedRole = await getUserRole(sessionUser.id);
+        setRole((fetchedRole as AppRole) || 'siswa');
       } else {
         setRole(null);
       }
@@ -60,18 +61,18 @@ export function AuthProvider({ children }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  const login = useCallback(async (email, password) => {
+  const login = useCallback(async (email: string, password: string) => {
     try {
       const { data, error } = await loginWithEmail(email, password);
 
-      if (!error) {
+      if (!error && data?.user) {
         setUser(data.user);
         return { success: true };
       }
 
-      return { success: false, message: error.message };
+      return { success: false, message: error?.message || 'Login gagal' };
     } catch {
-      return { success: false };
+      return { success: false, message: 'Terjadi kesalahan yang tidak diketahui' };
     }
   }, []);
 
@@ -80,17 +81,19 @@ export function AuthProvider({ children }) {
       await logoutUser();
       setUser(null);
       setRole(null);
-    } catch {}
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
   }, []);
 
-  const value = useMemo(() => ({
+  const value = useMemo<AuthContextValue>(() => ({
     user,
     role,
     loading,
     isAuthenticated: !!user,
     login,
     logout,
-    hasRole: (roles) => roles?.includes(role),
+    hasRole: (roles: AppRole[]) => roles?.includes(role as AppRole) ?? false,
   }), [user, role, loading, login, logout]);
 
   return (
@@ -100,14 +103,19 @@ export function AuthProvider({ children }) {
   );
 }
 
-export function useAuth() {
-  return useContext(AuthContext) || {
-    user: null,
-    role: null,
-    loading: false,
-    isAuthenticated: false,
-    login: async () => ({ success: false }),
-    logout: () => {},
-    hasRole: () => false,
-  };
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    // Fallback jika digunakan di luar AuthProvider (seharusnya tidak terjadi)
+    return {
+      user: null,
+      role: null,
+      loading: false,
+      isAuthenticated: false,
+      login: async () => ({ success: false }),
+      logout: async () => {},
+      hasRole: () => false,
+    };
+  }
+  return ctx;
 }
