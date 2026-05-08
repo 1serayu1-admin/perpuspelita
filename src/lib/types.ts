@@ -2,7 +2,7 @@
  * AppRole adalah daftar role yang valid sesuai database (tabel user_roles).
  * Ini adalah single source of truth untuk role di seluruh aplikasi.
  */
-export type AppRole = 'admin' | 'school_super_admin' | 'guru' | 'siswa';
+export type AppRole = 'global_super_admin' | 'school_super_admin' | 'admin' | 'guru' | 'siswa';
 
 // Legacy alias — kept for backward compatibility with older pages
 export type Role = AppRole;
@@ -28,6 +28,7 @@ export interface Book {
   stock: number;
   available: number;
   shelfLocation: string;
+  source?: string;
   coverUrl?: string;
 }
 

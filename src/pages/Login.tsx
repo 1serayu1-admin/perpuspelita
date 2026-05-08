@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSupabase } from '@/integrations/supabase/client';
-import { BookOpen, KeyRound, Mail, Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { BookOpen, KeyRound, Mail, Loader2, UserPlus, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -19,20 +22,67 @@ export default function Login() {
 
     setIsLoading(true);
     try {
-      const supabase = getSupabase();
-      if (!supabase) throw new Error('Koneksi database terputus');
+      const { success, message } = await login(email, password);
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
+      if (!success) throw new Error(message || 'Gagal login');
       
       toast.success('Login berhasil!');
       navigate('/dashboard');
     } catch (err: any) {
       toast.error(err.message || 'Gagal login');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      toast.error('Email dan password wajib diisi');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const supabase = getSupabase();
+      if (!supabase) throw new Error('Koneksi database terputus');
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name: email.split('@')[0],
+          }
+        }
+      });
+
+      if (error) {
+        toast.error('Gagal mendaftar: ' + error.message);
+        return;
+      }
+      
+      toast.success('Pendaftaran berhasil! Silakan login.');
+      setIsSignUp(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mendaftar');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fillDemo = async () => {
+    setEmail('1serayu1@gmail.com');
+    setPassword('Serayu123!!');
+    setIsLoading(true);
+    try {
+      const { success, message } = await login('1serayu1@gmail.com', 'Serayu123!!');
+      if (success) {
+        toast.success('Auto Login Berhasil!');
+        navigate('/dashboard');
+      } else {
+        toast.error(message || 'Gagal login otomatis');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -47,11 +97,15 @@ export default function Login() {
             <div className="w-16 h-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mx-auto mb-6 transform rotate-3 hover:rotate-0 transition-all duration-300">
               <BookOpen className="w-8 h-8" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Selamat Datang</h1>
-            <p className="text-gray-500 mt-2">Masuk ke sistem Perpustakaan Digital SMK Pelita</p>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+              {isSignUp ? 'Buat Akun Baru' : 'Selamat Datang'}
+            </h1>
+            <p className="text-gray-500 mt-2">
+              {isSignUp ? 'Daftar untuk akses perpustakaan digital' : 'Masuk ke sistem Perpustakaan Digital SMK Pelita'}
+            </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-6 mt-8">
+          <form onSubmit={isSignUp ? handleSignUp : handleLogin} className="space-y-6 mt-8">
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-gray-700 block mb-2">Email</label>
@@ -88,24 +142,53 @@ export default function Login() {
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all duration-200 active:scale-[0.98]"
-            >
-              {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                'Masuk'
-              )}
-            </button>
+            <div className="space-y-3">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all duration-200 active:scale-[0.98]"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : isSignUp ? (
+                  'Daftar Sekarang'
+                ) : (
+                  'Masuk'
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="w-full flex items-center justify-center py-2 px-4 text-sm font-medium text-gray-600 hover:text-primary transition-colors"
+              >
+                {isSignUp ? (
+                  <><LogIn className="w-4 h-4 mr-2" /> Sudah punya akun? Masuk</>
+                ) : (
+                  <><UserPlus className="w-4 h-4 mr-2" /> Belum punya akun? Daftar</>
+                )}
+              </button>
+            </div>
           </form>
+
+          {!isSignUp && (
+            <div className="pt-6 border-t border-gray-100">
+              <button
+                onClick={fillDemo}
+                className="w-full py-3 px-4 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all duration-200"
+              >
+                Gunakan Akun Demo (Superadmin)
+              </button>
+              <p className="text-[10px] text-center text-gray-400 mt-2 uppercase tracking-widest font-bold">
+                Akses Penuh Untuk Pengujian
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Right Side - Vibrant Visuals */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gray-50/50">
-        {/* Dynamic Vibrant Gradient Blobs */}
         <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-primary/20 rounded-full blur-[80px] opacity-70 animate-pulse-ring"></div>
         <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-96 h-96 bg-warning/20 rounded-full blur-[80px] opacity-60 animate-pulse-ring" style={{ animationDelay: '1s' }}></div>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[30rem] h-[30rem] bg-success/10 rounded-full blur-[100px] opacity-60"></div>

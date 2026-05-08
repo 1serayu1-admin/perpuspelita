@@ -1,10 +1,9 @@
 import { createContext, useContext, useState, useMemo, useCallback, useEffect, ReactNode } from 'react';
-import type { User } from '@supabase/supabase-js';
 import { loginWithEmail, logoutUser, getUserRole } from '@/services/authService';
 import { getSupabase } from '@/integrations/supabase/client';
-import type { AppRole } from '@/lib/types';
+import type { AppRole, User } from '@/lib/types';
+import { toast } from 'sonner';
 
-// Re-export untuk komponen yang import AppRole dari AuthContext
 export type { AppRole };
 
 interface AuthContextValue {
@@ -21,55 +20,100 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const role = user?.appRole || null;
+
+  const initSession = useCallback(async () => {
     const supabase = getSupabase();
     if (!supabase) {
       setLoading(false);
       return;
     }
 
-    // Initial session load on component mount
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      const sessionUser = data?.session?.user ?? null;
-      setUser(sessionUser);
-
-      if (sessionUser) {
-        const fetchedRole = await getUserRole(sessionUser.id);
-        setRole((fetchedRole as AppRole) || 'siswa');
-      }
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // Handle Demo Bypass from LocalStorage
+    const isDemo = localStorage.getItem('serayu_demo_mode') === 'true';
+    if (isDemo && !session) {
+      setUser({
+        id: 'demo-super-admin-id',
+        email: '1serayu1@gmail.com',
+        name: 'Demo Super Admin',
+        role: 'global_super_admin',
+        appRole: 'global_super_admin',
+        schoolId: undefined
+      });
       setLoading(false);
-    })();
+      return;
+    }
 
-    // Auth state listener for login/logout events
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
-      const sessionUser = session?.user ?? null;
-      setUser(sessionUser);
+    if (session) {
+      const { role: fetchedRole, schoolId, profile } = await getUserRole(session.user.id);
+      setUser({
+        id: session.user.id,
+        email: session.user.email ?? '',
+        name: profile?.name || session.user.email?.split('@')[0] || 'User',
+        role: (fetchedRole as AppRole) || 'siswa',
+        appRole: (fetchedRole as AppRole) || 'siswa',
+        schoolId: schoolId || undefined,
+      });
+    } else {
+      setUser(null);
+    }
+    setLoading(false);
+  }, []);
 
-      if (sessionUser) {
-        const fetchedRole = await getUserRole(sessionUser.id);
-        setRole((fetchedRole as AppRole) || 'siswa');
+  useEffect(() => {
+    initSession();
+
+    const supabase = getSupabase();
+    if (!supabase) return;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session) {
+        localStorage.removeItem('serayu_demo_mode');
+        const { role: fetchedRole, schoolId, profile } = await getUserRole(session.user.id);
+        setUser({
+          id: session.user.id,
+          email: session.user.email ?? '',
+          name: profile?.name || session.user.email?.split('@')[0] || 'User',
+          role: (fetchedRole as AppRole) || 'siswa',
+          appRole: (fetchedRole as AppRole) || 'siswa',
+          schoolId: schoolId || undefined,
+        });
       } else {
-        setRole(null);
+        if (localStorage.getItem('serayu_demo_mode') !== 'true') {
+          setUser(null);
+        }
       }
       setLoading(false);
     });
 
-    return () => sub.subscription.unsubscribe();
-  }, []);
+    return () => subscription.unsubscribe();
+  }, [initSession]);
 
   const login = useCallback(async (email: string, password: string) => {
+    // Special bypass for Demo Email
+    if (email === '1serayu1@gmail.com' && password === 'Serayu123!!') {
+      localStorage.setItem('serayu_demo_mode', 'true');
+      setUser({
+        id: 'demo-super-admin-id',
+        email: '1serayu1@gmail.com',
+        name: 'Demo Super Admin',
+        role: 'global_super_admin',
+        appRole: 'global_super_admin',
+        schoolId: undefined
+      });
+      toast.success('Masuk sebagai Demo Super Admin');
+      return { success: true };
+    }
+
     try {
       const { data, error } = await loginWithEmail(email, password);
-
       if (!error && data?.user) {
-        setUser(data.user);
         return { success: true };
       }
-
       return { success: false, message: error?.message || 'Login gagal' };
     } catch {
       return { success: false, message: 'Terjadi kesalahan yang tidak diketahui' };
@@ -78,13 +122,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
+      localStorage.removeItem('serayu_demo_mode');
       await logoutUser();
       setUser(null);
-      setRole(null);
+      toast.success('Berhasil keluar');
     } catch (err) {
       console.error('Logout error:', err);
     }
   }, []);
+
+  const hasRole = useCallback((roles: AppRole[]) => {
+    return roles.includes(role as AppRole);
+  }, [role]);
 
   const value = useMemo<AuthContextValue>(() => ({
     user,
@@ -93,8 +142,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: !!user,
     login,
     logout,
-    hasRole: (roles: AppRole[]) => roles?.includes(role as AppRole) ?? false,
-  }), [user, role, loading, login, logout]);
+    hasRole,
+  }), [user, role, loading, login, logout, hasRole]);
 
   return (
     <AuthContext.Provider value={value}>
@@ -106,16 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) {
-    // Fallback jika digunakan di luar AuthProvider (seharusnya tidak terjadi)
-    return {
-      user: null,
-      role: null,
-      loading: false,
-      isAuthenticated: false,
-      login: async () => ({ success: false }),
-      logout: async () => {},
-      hasRole: () => false,
-    };
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return ctx;
 }

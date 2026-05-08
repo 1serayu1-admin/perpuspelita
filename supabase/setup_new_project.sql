@@ -6,7 +6,7 @@
 -- =============================================
 -- 1. EXTENSIONS
 -- =============================================
-extension if not exists "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- =============================================
 -- 2. ENUMS

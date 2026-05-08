@@ -34,22 +34,22 @@ export function AppSidebar() {
   const { role, logout, user } = useAuth();
 
   const menuItems: MenuItem[] = [
-    { label: 'Dashboard',      icon: LayoutDashboard, path: '/dashboard',       roles: ['admin', 'school_super_admin', 'guru', 'siswa'] },
-    { label: 'Katalog Buku',   icon: BookOpen,        path: '/books',           roles: ['admin', 'school_super_admin', 'guru', 'siswa'] },
-    { label: 'Tanya AI',       icon: Sparkles,        path: '/tanya-ai',        roles: ['admin', 'school_super_admin', 'guru', 'siswa'] },
-    { label: 'Kategori',       icon: Tag,             path: '/categories',      roles: ['admin', 'school_super_admin', 'guru'] },
-    { label: 'Peminjaman',     icon: Library,         path: '/borrow-regular',  roles: ['admin', 'school_super_admin', 'guru'] },
-    { label: 'Pinjam Pelajaran', icon: BookCopy,      path: '/borrow-lesson',   roles: ['admin', 'school_super_admin', 'guru'] },
-    { label: 'Pengembalian',   icon: RotateCcw,       path: '/returns',         roles: ['admin', 'school_super_admin', 'guru'] },
-    { label: 'Persetujuan',    icon: ClipboardCheck,  path: '/approval',        roles: ['admin', 'school_super_admin', 'guru'] },
-    { label: 'Pinjam (Siswa)', icon: BookMarked,      path: '/borrow-request',  roles: ['siswa', 'guru'] },
-    { label: 'Data Siswa',     icon: GraduationCap,   path: '/students',        roles: ['admin', 'school_super_admin'] },
-    { label: 'Data Guru',      icon: Users,           path: '/teachers',        roles: ['admin', 'school_super_admin'] },
-    { label: 'Laporan',        icon: FileBarChart,    path: '/reports',         roles: ['admin', 'school_super_admin'] },
-    { label: 'Manajemen User', icon: ShieldCheck,     path: '/users',           roles: ['admin'] },
-    { label: 'Sekolah',        icon: School,          path: '/schools',         roles: ['admin'] },
-    { label: 'Database & Backup', icon: Database,     path: '/backup',          roles: ['admin'] },
-    { label: 'Pengaturan',     icon: SettingsIcon,    path: '/settings',        roles: ['admin', 'school_super_admin', 'guru'] },
+    { label: 'Dashboard',      icon: LayoutDashboard, path: '/dashboard',       roles: ['global_super_admin', 'admin', 'school_super_admin', 'guru', 'siswa'] },
+    { label: 'Katalog Buku',   icon: BookOpen,        path: '/books',           roles: ['global_super_admin', 'admin', 'school_super_admin', 'guru', 'siswa'] },
+    { label: 'Tanya AI',       icon: Sparkles,        path: '/tanya-ai',        roles: ['global_super_admin', 'admin', 'school_super_admin', 'guru', 'siswa'] },
+    { label: 'Kategori',       icon: Tag,             path: '/categories',      roles: ['global_super_admin', 'admin', 'school_super_admin', 'guru'] },
+    { label: 'Peminjaman',     icon: Library,         path: '/borrow-regular',  roles: ['global_super_admin', 'admin', 'school_super_admin', 'guru'] },
+    { label: 'Pinjam Pelajaran', icon: BookCopy,      path: '/borrow-lesson',   roles: ['global_super_admin', 'admin', 'school_super_admin', 'guru'] },
+    { label: 'Pengembalian',   icon: RotateCcw,       path: '/returns',         roles: ['global_super_admin', 'admin', 'school_super_admin', 'guru'] },
+    { label: 'Persetujuan',    icon: ClipboardCheck,  path: '/approval',        roles: ['global_super_admin', 'admin', 'school_super_admin', 'guru'] },
+    { label: 'Pinjam (Siswa)', icon: BookMarked,      path: '/borrow-request',  roles: ['global_super_admin', 'siswa', 'guru'] },
+    { label: 'Data Siswa',     icon: GraduationCap,   path: '/students',        roles: ['global_super_admin', 'admin', 'school_super_admin'] },
+    { label: 'Data Guru',      icon: Users,           path: '/teachers',        roles: ['global_super_admin', 'admin', 'school_super_admin'] },
+    { label: 'Laporan',        icon: FileBarChart,    path: '/reports',         roles: ['global_super_admin', 'admin', 'school_super_admin'] },
+    { label: 'Manajemen User', icon: ShieldCheck,     path: '/users',           roles: ['global_super_admin', 'admin'] },
+    { label: 'Sekolah',        icon: School,          path: '/schools',         roles: ['global_super_admin', 'admin'] },
+    { label: 'Database & Backup', icon: Database,     path: '/backup',          roles: ['global_super_admin', 'admin'] },
+    { label: 'Pengaturan',     icon: SettingsIcon,    path: '/settings',        roles: ['global_super_admin', 'admin', 'school_super_admin', 'guru'] },
   ];
 
   const filteredMenu = menuItems.filter(item =>

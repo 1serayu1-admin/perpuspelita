@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Test</title>
+</head>
+<body>
+    <h1>Simple Test</h1>
+    <button onclick="testAlert()">Test Alert</button>
+    <button onclick="testSupabase()">Test Supabase</button>
+    <div id="result"></div>
+
+    <script>
+        function testAlert() {
+            alert('JavaScript is working!');
+        }
+
+        async function testSupabase() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing...';
+
+            try {
+                // Test basic fetch first
+                const response = await fetch('https://lavlemqycumxlhoxexdi.supabase.co/auth/v1/signup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhdmxlbXF5Y3VteGxob3hleGRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NjMyNDUsImV4cCI6MjA4ODEzOTI0NX0.vfjJHfd76qB-3Z0N9b82u94_ZkyETs8eht_h8hAC9EM'
+                    },
+                    body: JSON.stringify({
+                        email: 'test' + Date.now() + '@example.com',
+                        password: 'password123'
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<p style="color: green;">✅ Success!</p>`;
+                } else {
+                    resultDiv.innerHTML = `<p style="color: red;">❌ Error: ${JSON.stringify(result)}</p>`;
+                }
+
+                console.log('Full response:', { status: response.status, result });
+
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">💥 Error: ${error.message}</p>`;
+                console.error('Error:', error);
+            }
+        }
+
+        console.log('Page loaded. Test JavaScript is working.');
+    </script>
+</body>
+</html>

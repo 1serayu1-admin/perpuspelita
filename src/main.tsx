@@ -38,11 +38,11 @@ const queryClient = new QueryClient()
 
 // Role groups — sumber tunggal agar mudah diubah
 const ROLES = {
-  all:    ['admin', 'school_super_admin', 'guru', 'siswa'] as AppRole[],
-  admin:  ['admin', 'school_super_admin'] as AppRole[],
-  staff:  ['admin', 'school_super_admin', 'guru'] as AppRole[],
-  member: ['siswa', 'guru'] as AppRole[],
-  superOnly: ['admin'] as AppRole[],
+  all:    ['global_super_admin', 'admin', 'school_super_admin', 'guru', 'siswa'] as AppRole[],
+  admin:  ['global_super_admin', 'admin', 'school_super_admin'] as AppRole[],
+  staff:  ['global_super_admin', 'admin', 'school_super_admin', 'guru'] as AppRole[],
+  member: ['global_super_admin', 'siswa', 'guru'] as AppRole[],
+  superOnly: ['global_super_admin'] as AppRole[],
 }
 
 function App() {
