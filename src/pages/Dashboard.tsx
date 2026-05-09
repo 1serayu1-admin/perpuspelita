@@ -72,144 +72,117 @@ export default function Dashboard() {
     },
   ];
 
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 11) return 'Selamat pagi';
+    if (h < 15) return 'Selamat siang';
+    if (h < 18) return 'Selamat sore';
+    return 'Selamat malam';
+  })();
+
   return (
     <AppLayout>
-      <div className="space-y-8 animate-fade-in">
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Dashboard Overview</h1>
-            <p className="text-gray-500 mt-1">Selamat datang kembali, <span className="font-semibold text-primary">{user?.name}</span>. Berikut ringkasan perpustakaan Anda.</p>
+            <p className="text-sm text-gray-400 font-medium">{greeting},</p>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight capitalize">{user?.name || user?.email?.split('@')[0]}</h1>
           </div>
-          <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-widest bg-gray-50 px-4 py-2 rounded-full border border-gray-100">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 bg-white border border-gray-100 shadow-sm px-4 py-2 rounded-xl">
             <Clock className="w-3.5 h-3.5" />
-            Terakhir Update: Baru saja
+            Diperbarui baru saja
           </div>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat, i) => (
-            <div key={i} className="group relative bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-              <div className="flex justify-between items-start">
-                <div className={`${stat.color} p-4 rounded-2xl text-white shadow-lg shadow-${stat.color.split('-')[1]}/30 group-hover:scale-110 transition-transform duration-300`}>
-                  <stat.icon className="w-6 h-6" />
+            <div key={i} className="group bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+              <div className="flex items-start justify-between mb-4">
+                <div className={`${stat.color} p-3 rounded-xl text-white shadow-sm`}>
+                  <stat.icon className="w-5 h-5" />
                 </div>
-                <div className="flex items-center gap-1 text-[10px] font-bold text-success bg-success/10 px-2 py-1 rounded-full">
+                <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
                   <TrendingUp className="w-3 h-3" />
                   {stat.trend}
                 </div>
               </div>
-              <div className="mt-6">
-                <p className="text-sm font-medium text-gray-500">{stat.label}</p>
-                <h3 className="text-4xl font-black text-gray-900 mt-1">{stat.value}</h3>
-              </div>
-              <div className="absolute top-4 right-4 text-gray-100 group-hover:text-gray-200 transition-colors pointer-events-none">
-                <ArrowUpRight className="w-12 h-12" />
-              </div>
+              <p className="text-xs font-medium text-gray-500 mb-1">{stat.label}</p>
+              <h3 className="text-3xl font-black text-gray-900">{stat.value}</h3>
             </div>
           ))}
         </div>
 
-        {/* Main Content Sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Chart Section */}
-          <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-            <div className="flex items-center justify-between mb-8">
+        {/* Main Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Chart */}
+          <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-xl font-bold text-gray-900">Statistik Peminjaman</h3>
-                <p className="text-sm text-gray-500 mt-1">Tren peminjaman buku dalam 7 hari terakhir</p>
+                <h3 className="text-base font-bold text-gray-900">Statistik Peminjaman</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Tren 7 hari terakhir</p>
               </div>
-              <select className="bg-gray-50 border-none text-xs font-bold rounded-xl px-3 py-2 outline-none">
+              <select className="bg-gray-50 border border-gray-100 text-xs font-semibold rounded-lg px-3 py-1.5 outline-none text-gray-600">
                 <option>Minggu Ini</option>
                 <option>Bulan Ini</option>
               </select>
             </div>
-            
-            <div className="h-[300px] w-full">
+
+            <div className="h-[260px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#0369a1" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#0369a1" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.15}/>
+                      <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{fill: '#94a3b8', fontSize: 12}} 
-                    dy={10}
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{fill: '#94a3b8', fontSize: 12}}
-                  />
-                  <Tooltip 
-                    contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="value" 
-                    stroke="#0369a1" 
-                    strokeWidth={4}
-                    fillOpacity={1} 
-                    fill="url(#colorValue)" 
-                  />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 11}} dy={8} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 11}} />
+                  <Tooltip contentStyle={{borderRadius: '12px', border: '1px solid #f1f5f9', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', fontSize: 12}} />
+                  <Area type="monotone" dataKey="value" stroke="#0ea5e9" strokeWidth={2.5} fillOpacity={1} fill="url(#colorValue)" dot={false} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Activity Section */}
-          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-bold text-gray-900">Aktivitas Terakhir</h3>
-              <button className="text-xs font-bold text-primary hover:underline">Lihat Semua</button>
+          {/* Activity */}
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-base font-bold text-gray-900">Aktivitas Terakhir</h3>
+              <button className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors">Lihat Semua</button>
             </div>
-            
-            <div className="space-y-6">
+
+            <div className="flex-1 space-y-4">
               {logs.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                    <CheckCircle2 className="w-8 h-8 text-gray-200" />
-                  </div>
-                  <p className="text-sm text-gray-400">Belum ada aktivitas tercatat.</p>
+                <div className="flex flex-col items-center justify-center h-32 text-center">
+                  <CheckCircle2 className="w-8 h-8 text-gray-200 mb-2" />
+                  <p className="text-sm text-gray-400">Belum ada aktivitas.</p>
                 </div>
               ) : (
                 logs.slice(0, 5).map((log: any, i) => (
-                  <div key={i} className="flex gap-4 group">
-                    <div className="relative">
-                      <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                        <CheckCircle2 className="w-5 h-5 text-gray-300 group-hover:text-primary transition-colors" />
-                      </div>
-                      {i !== Math.min(logs.length, 5) - 1 && (
-                        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-0.5 h-6 bg-gray-50"></div>
-                      )}
+                  <div key={i} className="flex gap-3">
+                    <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-gray-900 leading-tight">{log.action}</p>
-                      <p className="text-xs text-gray-500 mt-1 line-clamp-1">{log.detail}</p>
-                      <p className="text-[10px] font-medium text-gray-400 mt-1 uppercase tracking-tighter">
-                        {new Date(log.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                      </p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 leading-tight truncate">{log.action}</p>
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">{log.detail}</p>
                     </div>
                   </div>
                 ))
               )}
             </div>
-            
-            <div className="mt-10 p-5 bg-gradient-to-br from-primary to-blue-700 rounded-3xl text-white relative overflow-hidden shadow-xl shadow-primary/20">
-              <div className="relative z-10">
-                <p className="text-xs font-bold opacity-80 uppercase tracking-widest">Upgrade Tips</p>
-                <h4 className="text-lg font-bold mt-1">Gunakan Tanya AI</h4>
-                <p className="text-[11px] mt-2 leading-relaxed opacity-90">Tanya AI dapat membantu Anda mencari buku atau membuat laporan perpustakaan lebih cepat!</p>
-                <button className="mt-4 bg-white text-primary text-[11px] font-bold px-4 py-2 rounded-xl hover:bg-opacity-90 transition-all">Mulai Tanya AI</button>
-              </div>
-              <Star className="absolute bottom-[-10px] right-[-10px] w-24 h-24 opacity-10 rotate-12" />
+
+            {/* AI Promo */}
+            <div className="mt-5 p-4 bg-gradient-to-br from-primary to-blue-600 rounded-xl text-white relative overflow-hidden">
+              <p className="text-[10px] font-bold opacity-70 uppercase tracking-widest">Tips</p>
+              <h4 className="text-sm font-bold mt-0.5">Gunakan Tanya AI</h4>
+              <p className="text-[11px] mt-1 leading-relaxed opacity-85">Cari buku & buat laporan lebih cepat dengan AI!</p>
+              <button className="mt-3 bg-white/20 hover:bg-white/30 border border-white/30 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors">Mulai →</button>
+              <Star className="absolute -bottom-3 -right-3 w-16 h-16 opacity-10 rotate-12" />
             </div>
           </div>
         </div>

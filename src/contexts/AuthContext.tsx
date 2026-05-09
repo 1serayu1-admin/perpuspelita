@@ -6,6 +6,7 @@ export type { AppRole };
 
 interface AuthContextValue {
   user: User | null;
+  role: AppRole | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
@@ -98,12 +99,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     toast.success('Berhasil keluar');
   }, []);
 
+  const role = useMemo<AppRole | null>(() => user?.appRole ?? user?.role ?? null, [user]);
+
   const value = useMemo<AuthContextValue>(() => ({
     user,
+    role,
     loading,
     login,
     logout
-  }), [user, loading, login, logout]);
+  }), [user, role, loading, login, logout]);
 
   return (
     <AuthContext.Provider value={value}>
