@@ -16,43 +16,43 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mode === "development" && componentTagger(),
-    // VitePWA({
-    //   registerType: "autoUpdate",
-    //   includeAssets: ["favicon.ico", "pwa-192.png", "pwa-512.png"],
-    //   workbox: {
-    //     navigateFallbackDenylist: [/^\/~oauth/],
-    //     globPatterns: ["**/*.{js,css,html,ico,png,svg,jpg,jpeg,woff2}"],
-    //   },
-    //   manifest: {
-    //     name: "Perpustakaan Digital",
-    //     short_name: "Perpustakaan",
-    //     description: "Sistem Manajemen Perpustakaan Sekolah",
-    //     theme_color: "#0369a1",
-    //     background_color: "#f8fafc",
-    //     display: "standalone",
-    //     orientation: "portrait",
-    //     scope: "/",
-    //     start_url: "/dashboard",
-    //     icons: [
-    //       {
-    //         src: "pwa-192.png",
-    //         sizes: "192x192",
-    //         type: "image/png",
-    //       },
-    //       {
-    //         src: "pwa-512.png",
-    //         sizes: "512x512",
-    //         type: "image/png",
-    //       },
-    //       {
-    //         src: "pwa-512.png",
-    //         sizes: "512x512",
-    //         type: "image/png",
-    //         purpose: "maskable",
-    //       },
-    //     ],
-    //   },
-    // }),
+    VitePWA({
+      registerType: "autoUpdate",
+      includeAssets: ["favicon.ico", "pwa-192.png", "pwa-512.png"],
+      workbox: {
+        navigateFallbackDenylist: [/^\/~oauth/],
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,jpg,jpeg,woff2}"],
+      },
+      manifest: {
+        name: "SERAYU Digital Library",
+        short_name: "SERAYU Library",
+        description: "Sistem Manajemen Perpustakaan Digital Sekolah",
+        theme_color: "#0369a1",
+        background_color: "#f8fafc",
+        display: "standalone",
+        orientation: "portrait",
+        scope: "/",
+        start_url: "/dashboard",
+        icons: [
+          {
+            src: "pwa-192.png",
+            sizes: "192x192",
+            type: "image/png",
+          },
+          {
+            src: "pwa-512.png",
+            sizes: "512x512",
+            type: "image/png",
+          },
+          {
+            src: "pwa-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any maskable",
+          },
+        ],
+      },
+    }),
   ].filter(Boolean),
   resolve: {
     alias: {
