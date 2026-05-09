@@ -98,9 +98,16 @@ const AdminManagement = () => {
     const roles = await fetchAllRows('user_roles', 'id, user_id, role, school_id');
 
     // Fetch schools for name mapping
-    const { data: schoolsData } = await supabase
-      .from('schools')
-      .select('id, name');
+    // DEMO USER DETECTION - Skip Supabase for demo users
+    let schoolsData;
+    if (user?.email?.endsWith('@demo.local')) {
+      schoolsData = [{ id: 'demo-school', name: 'SMK Pelita Demo' }];
+    } else {
+      const { data } = await supabase
+        .from('schools')
+        .select('id, name');
+      schoolsData = data;
+    }
 
     if (schoolsData) setSchools(schoolsData);
 

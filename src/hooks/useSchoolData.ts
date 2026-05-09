@@ -15,41 +15,47 @@ async function fetchAllRows(
   let hasMore = true;
 
   while (hasMore) {
-    let query = (supabase as any)
-      .from(table)
-      .select(options?.select || '*');
+    try {
+      let query = (supabase as any)
+        .from(table)
+        .select(options?.select || '*');
 
-    if (schoolId) {
-      query = query.eq('school_id', schoolId);
-    }
+      if (schoolId) {
+        query = query.eq('school_id', schoolId);
+      }
 
-    if (options?.orderBy) {
-      query = query.order(options.orderBy, { ascending: options.ascending ?? true });
-    } else {
-      query = query.order('created_at', { ascending: false });
-    }
+      if (options?.orderBy) {
+        query = query.order(options.orderBy, { ascending: options.ascending ?? true });
+      } else {
+        query = query.order('created_at', { ascending: false });
+      }
 
-    query = query.range(from, from + PAGE_SIZE - 1);
+      query = query.range(from, from + PAGE_SIZE - 1);
 
-    const { data, error } = await query;
+      const { data, error } = await query;
 
-    if (error) {
-      console.warn(`[useSchoolData] Failed to fetch ${table} (range ${from}-${from + PAGE_SIZE - 1}):`, error.message);
+      if (error) {
+        console.warn(`[useSchoolData] Failed to fetch ${table} (range ${from}-${from + PAGE_SIZE - 1}):`, error.message);
+        hasMore = false;
+        break;
+      }
+      
+      if (!data) {
+        hasMore = false;
+        break;
+      }
+
+      allRows.push(...data);
+
+      if (data.length < PAGE_SIZE) {
+        hasMore = false;
+      } else {
+        from += PAGE_SIZE;
+      }
+    } catch (err: any) {
+      console.error(`[useSchoolData] Error fetching ${table}:`, err.message);
       hasMore = false;
       break;
-    }
-    
-    if (!data) {
-      hasMore = false;
-      break;
-    }
-
-    allRows.push(...data);
-
-    if (data.length < PAGE_SIZE) {
-      hasMore = false;
-    } else {
-      from += PAGE_SIZE;
     }
   }
 

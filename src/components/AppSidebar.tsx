@@ -10,7 +10,7 @@ import {
   Library,
   Settings as SettingsIcon,
   LogOut,
-  Star, // Temporary replacement for Sparkles
+  Sparkles,
   ShieldCheck,
   FileBarChart,
   School,
@@ -31,12 +31,14 @@ interface MenuItem {
 
 export function AppSidebar() {
   const location = useLocation();
-  const { role, logout, user } = useAuth();
+  const { logout, user } = useAuth();
+
+  const role = (user?.appRole || user?.role || 'siswa') as AppRole;
 
   const menuItems: MenuItem[] = [
     { label: 'Dashboard',      icon: LayoutDashboard, path: '/dashboard',       roles: ['global_super_admin', 'admin', 'school_super_admin', 'guru', 'siswa'] },
     { label: 'Katalog Buku',   icon: BookOpen,        path: '/books',           roles: ['global_super_admin', 'admin', 'school_super_admin', 'guru', 'siswa'] },
-    { label: 'Tanya AI',       icon: Star,        path: '/tanya-ai',        roles: ['global_super_admin', 'admin', 'school_super_admin', 'guru', 'siswa'] },
+    { label: 'Tanya AI',       icon: Sparkles,        path: '/tanya-ai',        roles: ['global_super_admin', 'admin', 'school_super_admin', 'guru', 'siswa'] },
     { label: 'Kategori',       icon: Tag,             path: '/categories',      roles: ['global_super_admin', 'admin', 'school_super_admin', 'guru'] },
     { label: 'Peminjaman',     icon: Library,         path: '/borrow-regular',  roles: ['global_super_admin', 'admin', 'school_super_admin', 'guru'] },
     { label: 'Pinjam Pelajaran', icon: BookCopy,      path: '/borrow-lesson',   roles: ['global_super_admin', 'admin', 'school_super_admin', 'guru'] },

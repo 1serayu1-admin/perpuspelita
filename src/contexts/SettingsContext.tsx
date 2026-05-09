@@ -42,7 +42,25 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     try {
       let schoolId = user?.schoolId || null;
 
-      // For global_super_admin without a school, fetch the first school
+      // DETECT DEMO USER - Skip Supabase school fetch entirely
+      if (user?.email?.endsWith('@demo.local')) {
+        console.log('DEMO USER DETECTED - Using local demo school data');
+        const demoSchool = {
+          schoolName: 'SMK Pelita Demo',
+          appName: 'Perpustakaan Demo',
+          logoUrl: '',
+          motto: 'Demo Mode',
+          visi: 'Demo Vision - Stable Local Authentication',
+          ipAccessMode: 'open' as IpAccessMode,
+          allowedIps: []
+        };
+        setSettings(demoSchool);
+        setResolvedSchoolId('demo-school');
+        setLoading(false);
+        return;
+      }
+
+      // For global_super_admin without a school, fetch first school
       if (!schoolId && user?.appRole === 'global_super_admin') {
         const { data: firstSchool, error: schoolError } = await (supabase as any)
           .from('schools')

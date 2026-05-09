@@ -88,12 +88,17 @@ export default function Books() {
             schoolId = profile.school_id;
           } else {
             // Fallback for global_super_admin - get first school
-            const { data: firstSchool } = await supabase
-              .from('schools')
-              .select('id')
-              .limit(1)
-              .maybeSingle();
-            schoolId = firstSchool?.id;
+            // DEMO USER DETECTION - Skip Supabase for demo users
+            if (user?.email?.endsWith('@demo.local')) {
+              schoolId = 'demo-school';
+            } else {
+              const { data: firstSchool } = await supabase
+                .from('schools')
+                .select('id')
+                .limit(1)
+                .maybeSingle();
+              schoolId = firstSchool?.id;
+            }
           }
         }
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSupabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,14 +10,22 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
-  const { login } = useAuth();
+  const { login, user, loading } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!loading && user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, loading, navigate]);
 
   // Helper function to detect if input is email or username
   const isEmail = (input: string) => input.includes('@');
 
   // console.log("APP VERSION: BUILD-TEST-001"); // Suppressed for demo
 
+  
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
@@ -25,13 +33,11 @@ export default function Login() {
       return;
     }
 
-    // Convert username to internal email if not email format
-    const loginEmail = isEmail(email) ? email : `${email}@internal.local`;
-
     console.time("LOGIN_FLOW");
     setIsLoading(true);
     try {
-      const { success, message } = await login(loginEmail, password);
+      // Use the simplified login function from AuthContext
+      const { success, message } = await login(email, password);
 
       if (!success) throw new Error(message || 'Gagal login');
       
@@ -82,11 +88,11 @@ export default function Login() {
   };
 
   const fillDemo = async () => {
-    setEmail('1serayu1@gmail.com');
-    setPassword('Demo123!!');
+    setEmail('admin');
+    setPassword('admin123');
     setIsLoading(true);
     try {
-      const { success, message } = await login('1serayu1@gmail.com', 'Serayu123!!');
+      const { success, message } = await login('admin', 'admin123');
       if (success) {
         toast.success('Auto Login Berhasil!');
         navigate('/dashboard');

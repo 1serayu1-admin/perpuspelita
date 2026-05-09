@@ -11,7 +11,7 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { role, loading, user, isAuthenticated } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -22,11 +22,11 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     );
   }
 
-  if (!isAuthenticated) {
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  const safeRole = (user?.appRole || user?.role || role || "siswa") as AppRole;
+  const safeRole = (user?.appRole || user?.role || "siswa") as AppRole;
 
   if (allowedRoles?.length) {
     const allowed = canAccess(safeRole, allowedRoles);

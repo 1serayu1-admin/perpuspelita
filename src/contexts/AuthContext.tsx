@@ -1,6 +1,4 @@
 import { createContext, useContext, useState, useMemo, useCallback, useEffect, ReactNode } from 'react';
-import { loginWithEmail, logoutUser, getUserRole } from '@/services/authService';
-import { getSupabase } from '@/integrations/supabase/client';
 import type { AppRole, User } from '@/lib/types';
 import { toast } from 'sonner';
 
@@ -8,239 +6,104 @@ export type { AppRole };
 
 interface AuthContextValue {
   user: User | null;
-  role: AppRole | null;
   loading: boolean;
-  isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  login: (username: string, password: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
-  hasRole: (roles: AppRole[]) => boolean;
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+const DEMO_USERS = {
+  admin: {
+    password: 'admin123',
+    role: 'admin',
+    name: 'Demo Admin'
+  },
+  guru: {
+    password: 'guru123',
+    role: 'guru',
+    name: 'Demo Guru'
+  },
+  siswa: {
+    password: 'siswa123',
+    role: 'siswa',
+    name: 'Demo Siswa'
+  },
+  kepsek: {
+    password: 'kepsek123',
+    role: 'school_super_admin',
+    name: 'Demo Kepala Sekolah'
+  }
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const role = user?.appRole || null;
-
+  // APP STARTUP - Restore demo-auth from localStorage
   useEffect(() => {
-    console.log("AuthProvider MOUNT");
-    return () => console.log("AuthProvider UNMOUNT");
-  }, []);
-
-  useEffect(() => {
-    console.log("AUTH STATE", { loading, user });
-  }, [loading, user]);
-
-  const initSession = useCallback(async () => {
-    console.log("AUTH STEP", { loading, user: null, role: null, isAuthenticated: false });
-    setLoading(true);
-
-    try {
-      const supabase = getSupabase();
-
-      if (!supabase) {
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      const isDemo =
-        localStorage.getItem("serayu_demo_mode") === "true";
-
-      if (isDemo && !session) {
-        setUser({
-          id: "demo-super-admin-id",
-          email: "1serayu1@gmail.com", // Default demo email
-          name: "Demo Super Admin",
-          role: "global_super_admin",
-          appRole: "global_super_admin",
-          schoolId: undefined,
-        });
-        setLoading(false);
-        return;
-      }
-
-      if (!session) {
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-
-      // IMMEDIATE FALLBACK - tidak tunggu getUserRole()
-      setUser({
-        id: session.user.id,
-        email: session.user.email ?? "",
-        name: session.user.email?.split("@")[0] || "User",
-        role: "siswa" as AppRole,
-        appRole: "siswa" as AppRole,
-        schoolId: undefined,
-      });
-
-      // Async role fetch di background
+    const storedAuth = localStorage.getItem('demo-auth');
+    if (storedAuth) {
       try {
-        const roleData = await Promise.race([
-          getUserRole(session.user.id),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("timeout")), 2000)
-          ),
-        ]) as any;
-
-        if (roleData?.role) {
-          setUser(prev => prev ? {
-            ...prev,
-            role: roleData.role,
-            appRole: roleData.role,
-            schoolId: roleData.schoolId || undefined,
-          } : prev);
-        }
-      } catch (e) {
-        console.error("Background role fetch failed:", e);
+        const parsedUser = JSON.parse(storedAuth);
+        setUser(parsedUser);
+      } catch (error) {
+        console.error('Failed to parse stored auth:', error);
+        localStorage.removeItem('demo-auth');
       }
-
-    } catch (err) {
-      console.error("initSession error:", err);
-      setUser(null);
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }, []);
 
-  useEffect(() => {
-    initSession();
+  const login = useCallback(async (username: string, password: string) => {
+    console.log('Login attempt:', { username, password });
+    
+    // CHECK DEMO USERS (case insensitive)
+    const normalizedUsername = username.toLowerCase();
+    const demoUser = DEMO_USERS[normalizedUsername as keyof typeof DEMO_USERS];
+    console.log('Demo user found:', demoUser);
+    
+    if (demoUser && demoUser.password === password) {
+      // CREATE FAKE USER
+      const fakeUser: User = {
+        id: `demo-${normalizedUsername}`,
+        email: `${normalizedUsername}@demo.local`,
+        name: demoUser.name,
+        role: demoUser.role as AppRole,
+        appRole: demoUser.role as AppRole,
+        schoolId: 'demo-school'
+      };
 
-    const supabase = getSupabase();
-    if (!supabase) return;
-
-    const { data: { subscription } } =
-      supabase.auth.onAuthStateChange(async (_event, session) => {
-        setLoading(true);
-        try {
-          if (session) {
-            localStorage.removeItem("serayu_demo_mode");
-
-            let fetchedRole = "siswa" as AppRole;
-            let schoolId;
-            let profile = null;
-
-            try {
-              const roleData = await Promise.race([
-                getUserRole(session.user.id),
-                new Promise((_, reject) =>
-                  setTimeout(() => reject(new Error("timeout")), 4000)
-                ),
-              ]) as any;
-
-              fetchedRole = roleData?.role || ("siswa" as AppRole);
-              schoolId = roleData?.schoolId;
-              profile = roleData?.profile;
-            } catch (err) {
-              console.error("getUserRole gagal:", err);
-            }
-
-            setUser({
-              id: session.user.id,
-              email: session.user.email ?? "",
-              name:
-                profile?.name ||
-                session.user.email?.split("@")[0] ||
-                "User",
-              role: fetchedRole,
-              appRole: fetchedRole,
-              schoolId: schoolId || undefined,
-            });
-          } else {
-            if (localStorage.getItem("serayu_demo_mode") !== "true") {
-              setUser(null);
-            }
-          }
-        } catch (err) {
-          console.error("Auth listener error:", err);
-          setUser(null);
-        } finally {
-          console.log("AUTH LOADING FIX", { loading, user });
-          setLoading(false);
-        }
-      });
-
-    return () => subscription.unsubscribe();
-  }, [initSession]);
-
-  const login = useCallback(async (email: string, password: string) => {
-    // Special bypass for Demo Emails
-    if ((email === '1serayu1@gmail.com' || email === '1serayu.1@gmail.com') && password === 'Serayu123!!') {
-      localStorage.setItem('serayu_demo_mode', 'true');
-      setUser({
-        id: 'demo-super-admin-id',
-        email: email,
-        name: 'Demo Super Admin',
-        role: 'global_super_admin',
-        appRole: 'global_super_admin',
-        schoolId: undefined
-      });
-      toast.success('Masuk sebagai Demo Super Admin');
+      console.log('Setting user:', fakeUser);
+      
+      // SET USER AND STORE IN LOCALSTORAGE
+      setUser(fakeUser);
+      localStorage.setItem('demo-auth', JSON.stringify(fakeUser));
+      
+      console.log('Login success for role:', demoUser.role);
+      toast.success(`Masuk sebagai ${demoUser.name}`);
       return { success: true };
     }
 
-    try {
-      console.log('LOGIN ATTEMPT:', { email, password: '***' });
-      const { data, error } = await loginWithEmail(email, password);
-      
-      console.log('LOGIN RESPONSE:', { 
-        data: data ? { user: data.user?.id, email: data.user?.email } : null,
-        error: error ? { message: error.message, status: (error as any)?.status || 'unknown' } : null
-      });
-      
-      if (!error && data?.user) {
-        console.log('LOGIN SUCCESS:', data.user.id);
-        return { success: true };
-      }
-      
-      console.error('LOGIN FAILED:', error);
-      return { 
-        success: false, 
-        message: error?.message || 'Login gagal',
-        details: error
-      };
-    } catch (err) {
-      console.error('LOGIN EXCEPTION:', err);
-      return { 
-        success: false, 
-        message: 'Terjadi kesalahan yang tidak diketahui',
-        details: err
-      };
-    }
+    console.log('Login failed: invalid credentials');
+    // INVALID CREDENTIALS
+    toast.error('Username atau password salah');
+    return { success: false, message: 'Username atau password salah' };
   }, []);
 
   const logout = useCallback(async () => {
-    try {
-      localStorage.removeItem('serayu_demo_mode');
-      await logoutUser();
-      setUser(null);
-      toast.success('Berhasil keluar');
-    } catch (err) {
-      console.error('Logout error:', err);
-    }
+    // CLEAR LOCALSTORAGE AND USER
+    localStorage.removeItem('demo-auth');
+    setUser(null);
+    toast.success('Berhasil keluar');
   }, []);
-
-  const hasRole = useCallback((roles: AppRole[]) => {
-    return roles.includes(role as AppRole);
-  }, [role]);
 
   const value = useMemo<AuthContextValue>(() => ({
     user,
-    role,
     loading,
-    isAuthenticated: !!user,
     login,
-    logout,
-    hasRole,
-  }), [user, role, loading, login, logout, hasRole]);
+    logout
+  }), [user, loading, login, logout]);
 
   return (
     <AuthContext.Provider value={value}>
