@@ -12,8 +12,8 @@ const ActivityLogPage = () => {
   const perPage = 20;
 
   const filtered = logs.filter((log: any) =>
-    log.action.toLowerCase().includes(search.toLowerCase()) ||
-    log.user_name.toLowerCase().includes(search.toLowerCase()) ||
+    (log.action || '').toLowerCase().includes(search.toLowerCase()) ||
+    (log.user_name || '').toLowerCase().includes(search.toLowerCase()) ||
     (log.detail || '').toLowerCase().includes(search.toLowerCase())
   );
 

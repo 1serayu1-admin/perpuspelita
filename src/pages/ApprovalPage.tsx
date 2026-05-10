@@ -96,6 +96,7 @@ const ApprovalPage = () => {
     });
 
     toast.success('Pengajuan disetujui!');
+    await refetch();
     logActivity('Persetujuan Peminjaman', `Pengajuan "${freshReq.book_title}" oleh ${freshReq.requester_name} disetujui`, user?.name || '', user?.schoolId);
   };
 

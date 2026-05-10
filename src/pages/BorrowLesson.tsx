@@ -45,6 +45,12 @@ const BorrowLesson = () => {
     const book = books.find((b: any) => b.id === bookId);
     const teacher = teachers.find((t: any) => t.id === teacherId);
 
+    if (!book) {
+      toast.error('Buku tidak ditemukan. Coba refresh halaman.');
+      setSaving(false);
+      return;
+    }
+
     if (!student?.user_id) {
       toast.error('Siswa ini belum memiliki akun pengguna. Hubungi admin untuk membuat akun terlebih dahulu.');
       setSaving(false);
