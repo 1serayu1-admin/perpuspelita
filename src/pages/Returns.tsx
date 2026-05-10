@@ -14,6 +14,7 @@ const Returns = () => {
   const { data: borrowings, loading, update } = useSchoolData<any>('borrowings');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [processingId, setProcessingId] = useState<string | null>(null);
   const perPage = 20;
 
   const borrowed = borrowings.filter((t: any) => t.status === 'borrowed' || t.status === 'late');
@@ -28,6 +29,11 @@ const Returns = () => {
   const handleReturn = async (id: string, dueDate: string) => {
     if (!window.confirm('Konfirmasi pengembalian buku ini?')) return;
 
+    // Per-row processing lock — prevents double-click race condition
+    if (processingId === id) return;
+    setProcessingId(id);
+
+    try {
     const item = borrowings.find((b: any) => b.id === id);
 
     // Guard: prevent double-return — should not appear in list but defensive check
@@ -65,6 +71,9 @@ const Returns = () => {
 
     toast.success(isLate ? 'Buku dikembalikan (terlambat)' : 'Buku berhasil dikembalikan');
     logActivity('Pengembalian Buku', `${item?.borrower_name} mengembalikan "${item?.book_title}"${isLate ? ' (terlambat)' : ''}`, user?.name || '', user?.schoolId);
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   const statusColor = (s: string) => {
@@ -125,8 +134,8 @@ const Returns = () => {
                         </span>
                       </td>
                       <td className="p-3 text-right">
-                        <Button size="sm" variant="outline" onClick={() => handleReturn(t.id, t.due_date)}>
-                          <RotateCcw className="w-3.5 h-3.5 mr-1" /> Kembalikan
+                        <Button size="sm" variant="outline" onClick={() => handleReturn(t.id, t.due_date)} disabled={processingId === t.id}>
+                          {processingId === t.id ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5 mr-1" />} Kembalikan
                         </Button>
                       </td>
                     </tr>
