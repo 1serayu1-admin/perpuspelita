@@ -124,7 +124,7 @@ export default function Users() {
       });
       
       // Refresh users list
-      fetchUsers();
+      loadUsers();
       
     } catch (error: any) {
       console.error('Create user error:', error);
@@ -204,11 +204,10 @@ export default function Users() {
       await supabase
         .from('activity_logs')
         .insert({
-          action: 'role_changed',
-          message: `Changed role ${user.email} from ${oldRole} to ${newRole}`,
-          user_id: currentUser?.id,
-          target_user_id: userId,
-          created_at: new Date().toISOString()
+          action: 'Role Changed',
+          detail: `Role ${user.email || 'user'} diubah dari ${oldRole} ke ${newRole}`,
+          user_name: currentUser?.name || currentUser?.email || 'Admin',
+          school_id: currentUser?.schoolId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentUser.schoolId) ? currentUser.schoolId : null,
         });
 
       toast.success(`Role ${user.email} berhasil diubah ke ${getRoleLabel(newRole)}`);
