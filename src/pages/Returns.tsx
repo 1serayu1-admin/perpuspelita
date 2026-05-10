@@ -18,8 +18,8 @@ const Returns = () => {
 
   const borrowed = borrowings.filter((t: any) => t.status === 'borrowed' || t.status === 'late');
   const filtered = borrowed.filter((t: any) =>
-    t.borrower_name.toLowerCase().includes(search.toLowerCase()) ||
-    t.book_title.toLowerCase().includes(search.toLowerCase())
+    (t.borrower_name || '').toLowerCase().includes(search.toLowerCase()) ||
+    (t.book_title || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const totalPages = Math.ceil(filtered.length / perPage);

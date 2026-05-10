@@ -27,8 +27,8 @@ const BorrowRegular = () => {
 
   const regularBorrowings = borrowings.filter((b: any) => b.type === 'regular');
   const filtered = regularBorrowings.filter((t: any) =>
-    t.borrower_name.toLowerCase().includes(search.toLowerCase()) ||
-    t.book_title.toLowerCase().includes(search.toLowerCase())
+    (t.borrower_name || '').toLowerCase().includes(search.toLowerCase()) ||
+    (t.book_title || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const totalPages = Math.ceil(filtered.length / perPage);

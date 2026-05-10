@@ -19,9 +19,9 @@ export default function Books() {
 
   const filteredBooks = useMemo(() => {
     return books.filter((book: any) => 
-      book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      book.publisher.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      book.author.toLowerCase().includes(searchTerm.toLowerCase())
+      (book.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (book.publisher || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (book.author || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [books, searchTerm]);
 
