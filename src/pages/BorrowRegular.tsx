@@ -67,8 +67,13 @@ const BorrowRegular = () => {
     const book = books.find((b: any) => b.id === bookId);
     const teacher = teachers.find((t: any) => t.id === teacherId);
 
-    if (!teacher?.user_id) {
-      toast.error('Guru ini belum memiliki akun pengguna. Hubungi admin untuk membuat akun terlebih dahulu.');
+    if (!teacher) {
+      toast.error('Guru tidak ditemukan.');
+      setSaving(false);
+      return;
+    }
+    if (!teacher.user_id) {
+      toast.error(`Guru "${teacher.name}" belum memiliki akun sistem. Hubungi admin untuk membuat akun terlebih dahulu.`);
       setSaving(false);
       return;
     }
@@ -144,10 +149,15 @@ const BorrowRegular = () => {
           return result;
         }
 
+        if (!teacher.user_id) {
+          console.warn(`[BorrowRegular] Skipping teacher "${teacher.name}" - no user_id (FK violation risk)`);
+          failed++;
+          return result;
+        }
         result.push({
           type: 'regular',
           borrower_name: teacher.name,
-          borrower_id: teacher.user_id || teacher.id,
+          borrower_id: teacher.user_id,
           book_id: book.id,
           book_title: book.title,
           borrow_date: borrowDate,
@@ -166,10 +176,15 @@ const BorrowRegular = () => {
         return result;
       }
 
+      if (!student.user_id) {
+        console.warn(`[BorrowRegular] Skipping student "${student.name}" - no user_id (FK violation risk)`);
+        failed++;
+        return result;
+      }
       result.push({
         type: 'lesson',
         borrower_name: student.name,
-        borrower_id: student.user_id || student.id,
+        borrower_id: student.user_id,
         book_id: book.id,
         book_title: book.title,
         borrow_date: borrowDate,

@@ -10,7 +10,7 @@ import type { Book } from '@/lib/types';
 
 export default function Books() {
   const { role, user: authUser } = useAuth();
-  const { data: books, isLoading, refetch } = useSchoolData('books');
+  const { data: books, loading: isLoading, refetch } = useSchoolData('books');
   const [searchTerm, setSearchTerm] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -108,53 +108,60 @@ export default function Books() {
 
         // Process books with proper field mapping
         const booksToInsert = data.map((row: any) => {
-          const stock = parseInt(row['Jumlah'] || '0');
-          const categoryType = row['Jenis Buku'] || 'Non Fiksi';
-          
+          const stock = parseInt(row['Jumlah'] || '0') || 0;
+          const categoryType = (row['Jenis Buku'] || 'Non Fiksi').trim();
           return {
+            categoryType, // frontend-only, stripped before insert
+            // DB-valid fields only below:
             school_id: schoolId,
-            title: row['Judul Buku'] || 'Tanpa Judul',
-            author: row['Penyusun/Pengarang'] || '-',
-            publisher: row['Penerbit'] || '-',
-            category_id: null, // Will be set after category lookup
-            stock: stock,
+            title: (row['Judul Buku'] || 'Tanpa Judul').trim(),
+            author: (row['Penyusun/Pengarang'] || '-').trim(),
+            publisher: (row['Penerbit'] || '-').trim(),
+            year: new Date().getFullYear(),
+            isbn: '',
+            shelf_location: '',
+            stock,
             available: stock,
-            source: row['Sumber'] || '-',
-            year: new Date().getFullYear(), // Default to current year
-            isbn: '', // Empty for now
-            shelf_location: '', // Empty for now
-            categoryType: categoryType, // Store for category lookup
           };
         });
 
-        // Handle categories for each book
+        // Handle categories for each book, then build clean DB payload
         const processedBooks = [];
         for (const book of booksToInsert) {
-          // Get or create category
-          let category = null;
+          const { categoryType, ...dbFields } = book; // strip frontend-only field
+
+          let categoryId: string | null = null;
           const { data: existingCategory } = await supabase
             .from('categories')
             .select('id')
-            .eq('name', book.categoryType)
+            .eq('name', categoryType)
             .eq('school_id', schoolId)
             .limit(1)
             .maybeSingle();
-          
+
           if (existingCategory) {
-            category = existingCategory;
+            categoryId = existingCategory.id;
           } else {
             const { data: newCat } = await supabase
               .from('categories')
-              .insert({ name: book.categoryType, school_id: schoolId })
-              .select()
+              .insert({ name: categoryType, school_id: schoolId })
+              .select('id')
               .single();
-            category = newCat;
+            categoryId = newCat?.id ?? null;
           }
 
-          const { category_id, ...cleanBook } = book;
+          // Explicit whitelist — only columns that exist in DB schema
           processedBooks.push({
-            ...cleanBook,
-            category_id: category?.id,
+            school_id: dbFields.school_id,
+            title: dbFields.title,
+            author: dbFields.author,
+            publisher: dbFields.publisher,
+            year: dbFields.year,
+            isbn: dbFields.isbn,
+            shelf_location: dbFields.shelf_location,
+            stock: dbFields.stock,
+            available: dbFields.available,
+            category_id: categoryId,
           });
         }
 

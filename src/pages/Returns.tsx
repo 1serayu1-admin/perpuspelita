@@ -28,17 +28,23 @@ const Returns = () => {
   const handleReturn = async (id: string, dueDate: string) => {
     if (!window.confirm('Konfirmasi pengembalian buku ini?')) return;
 
+    const item = borrowings.find((b: any) => b.id === id);
+
+    // Guard: prevent double-return — should not appear in list but defensive check
+    if (!item || item.status === 'returned') {
+      toast.error('Buku ini sudah dikembalikan sebelumnya.');
+      return;
+    }
+
     const now = new Date();
     const due = new Date(dueDate);
     const isLate = now > due;
-
-    const item = borrowings.find((b: any) => b.id === id);
 
     // Increment stock FIRST (atomic), then update borrowing record
     if (item?.book_id) {
       const { data: incremented } = await supabase.rpc('increment_book_available', { _book_id: item.book_id });
       if (!incremented) {
-        toast.error('Gagal mengembalikan stok buku');
+        toast.error('Gagal mengembalikan stok buku. Coba lagi.');
         return;
       }
     }
@@ -50,7 +56,7 @@ const Returns = () => {
 
     if (error) {
       toast.error('Gagal memproses pengembalian: ' + error.message);
-      // Rollback stock increment
+      // Rollback stock increment on failure
       if (item?.book_id) {
         await supabase.rpc('decrement_book_available', { _book_id: item.book_id });
       }

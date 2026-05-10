@@ -87,6 +87,13 @@ export function useSchoolData<T extends Record<string, any>>(
       return;
     }
 
+    // Demo school guard — skip Supabase query, return empty data immediately
+    if (schoolId === 'demo-school') {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+
     const result = await fetchAllRows(table, schoolId, isGlobalAdmin, options);
     setData(result as T[]);
     setLoading(false);
@@ -96,7 +103,10 @@ export function useSchoolData<T extends Record<string, any>>(
     fetchData();
   }, [fetchData]);
 
+  const isDemoSchool = schoolId === 'demo-school';
+
   const insert = async (record: Partial<T>) => {
+    if (isDemoSchool) return { error: null };
     const payload = schoolId ? { ...record, school_id: schoolId } : record;
     const { error } = await (supabase as any).from(table).insert(payload);
     if (!error) await fetchData();
@@ -104,19 +114,21 @@ export function useSchoolData<T extends Record<string, any>>(
   };
 
   const update = async (id: string, record: Partial<T>) => {
+    if (isDemoSchool) return { error: null };
     const { error } = await (supabase as any).from(table).update(record).eq('id', id);
     if (!error) await fetchData();
     return { error };
   };
 
   const remove = async (id: string) => {
+    if (isDemoSchool) return { error: null };
     const { error } = await (supabase as any).from(table).delete().eq('id', id);
     if (!error) await fetchData();
     return { error };
   };
 
   const removeMany = async (ids: string[]) => {
-    if (ids.length === 0) return { error: null };
+    if (ids.length === 0 || isDemoSchool) return { error: null };
     const { error } = await (supabase as any).from(table).delete().in('id', ids);
     if (!error) await fetchData();
     return { error };

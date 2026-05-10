@@ -26,9 +26,19 @@ const BorrowRequestPage = () => {
   const [page, setPage] = useState(1);
   const perPage = 20;
 
+  const isValidUUID = (id: string) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
   const fetchRequests = useCallback(async () => {
     if (!user) return;
     setLoading(true);
+
+    // Skip DB fetch for demo users — requester_id won't match any real records
+    if (!isValidUUID(user.id)) {
+      setRequests([]);
+      setLoading(false);
+      return;
+    }
 
     // Fetch all pages to avoid 1000-row limit
     const allData: any[] = [];
@@ -67,6 +77,13 @@ const BorrowRequestPage = () => {
     e.preventDefault();
     if (!user) return;
     setSaving(true);
+
+    // Guard: demo users cannot create real DB records (FK violation risk)
+    if (!isValidUUID(user.id)) {
+      toast.error('Mode demo: Pengajuan peminjaman tidak tersedia. Login dengan akun sekolah asli untuk menggunakan fitur ini.');
+      setSaving(false);
+      return;
+    }
 
     const book = books.find((b: any) => b.id === selectedBookId);
     if (!book) { setSaving(false); return; }
