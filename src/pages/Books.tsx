@@ -16,6 +16,7 @@ export default function Books() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const canSeeSource = role === 'admin' || role === 'global_super_admin';
+  const canManageBooks = role === 'admin' || role === 'global_super_admin';
 
   const filteredBooks = useMemo(() => {
     return books.filter((book: any) => 
@@ -207,27 +208,33 @@ export default function Books() {
             className="hidden" 
           />
           
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
-          >
-            {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-            <span className="hidden sm:inline">Upload CSV</span>
-          </button>
+          {canManageBooks && (
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
+            >
+              {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              <span className="hidden sm:inline">Upload CSV</span>
+            </button>
+          )}
 
-          <button 
-            onClick={handleDownloadTemplate}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
-          >
-            <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Download Template</span>
-          </button>
+          {canManageBooks && (
+            <button 
+              onClick={handleDownloadTemplate}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Download Template</span>
+            </button>
+          )}
           
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors shadow-sm shadow-primary/30">
-            <Plus className="w-4 h-4" />
-            <span>Tambah Buku</span>
-          </button>
+          {canManageBooks && (
+            <button className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors shadow-sm shadow-primary/30">
+              <Plus className="w-4 h-4" />
+              <span>Tambah Buku</span>
+            </button>
+          )}
         </div>
       </div>
 
