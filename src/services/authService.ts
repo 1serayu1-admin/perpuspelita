@@ -29,6 +29,28 @@ const SUPER_ADMIN: HardcodedUser = {
   schoolId: undefined, // Super admin = all schools (no specific school)
 };
 
+// 1b. DEFAULT ADMIN (for immediate testing - can be removed later)
+const DEFAULT_ADMIN: HardcodedUser = {
+  id: 'admin-001',
+  email: 'admin',
+  password: 'admin',
+  name: 'Admin Perpustakaan',
+  role: 'admin',
+  schoolId: undefined,
+  isActive: true,
+};
+
+// 1c. DEFAULT GURU (for testing CSV import feature)
+const DEFAULT_GURU: HardcodedUser = {
+  id: 'guru-001',
+  email: '2024001',
+  password: '2024001',
+  name: 'Guru Test',
+  role: 'guru',
+  schoolId: undefined,
+  isActive: true,
+};
+
 // 2. DYNAMIC USERS (Stored in localStorage - created by Super Admin)
 // These can be created via UI by Super Admin
 const DYNAMIC_USERS_KEY = 'perpuspelita_dynamic_users';
@@ -42,9 +64,9 @@ function saveDynamicUsers(users: HardcodedUser[]) {
   localStorage.setItem(DYNAMIC_USERS_KEY, JSON.stringify(users));
 }
 
-// 3. Get ALL users (Super Admin + Dynamic)
+// 3. Get ALL users (Super Admin + Default + Dynamic)
 function getAllUsers(): HardcodedUser[] {
-  return [SUPER_ADMIN, ...getDynamicUsers()];
+  return [SUPER_ADMIN, DEFAULT_ADMIN, DEFAULT_GURU, ...getDynamicUsers()];
 }
 
 // ============================================
