@@ -89,9 +89,16 @@ const Teachers = () => {
   };
 
   const toggleActive = async (t: DbTeacher) => {
-    const { error } = await update(t.id, { is_active: !t.is_active });
-    if (error) toast.error('Gagal mengubah status');
-    else toast.success(t.is_active ? 'Keanggotaan dinonaktifkan' : 'Keanggotaan diaktifkan');
+    const newStatus = !t.is_active;
+    
+    const { error } = await update(t.id, { is_active: newStatus });
+    
+    if (error) {
+      toast.error('Gagal mengubah status');
+      refetch();
+    } else {
+      toast.success(newStatus ? 'Keanggotaan diaktifkan' : 'Keanggotaan dinonaktifkan');
+    }
   };
 
   const handleDelete = async (id: string) => {

@@ -120,9 +120,17 @@ const Students = () => {
   };
 
   const toggleActive = async (s: DbStudent) => {
-    const { error } = await update(s.id, { is_active: !s.is_active });
-    if (error) toast.error('Gagal mengubah status');
-    else toast.success(s.is_active ? 'Keanggotaan dinonaktifkan' : 'Keanggotaan diaktifkan');
+    const newStatus = !s.is_active;
+    
+    const { error } = await update(s.id, { is_active: newStatus });
+    
+    if (error) {
+      toast.error('Gagal mengubah status');
+      // Force refetch to restore original state
+      refetch();
+    } else {
+      toast.success(newStatus ? 'Keanggotaan diaktifkan' : 'Keanggotaan dinonaktifkan');
+    }
   };
 
   const handleDelete = async (id: string) => {
