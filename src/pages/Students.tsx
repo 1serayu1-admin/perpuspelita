@@ -167,19 +167,26 @@ const Students = () => {
     options?: { onProgress?: (progress: { current: number; total: number }) => void }
   ) => {
     let failed = 0;
+    let authCreated = 0;
+    let authFailed = 0;
 
-    const payloads = rows.reduce<Record<string, any>[]>((result, row) => {
+    const payloads = [] as Record<string, any>[];
+    const authAccounts = [] as { email: string; password: string; nis: string; name: string }[];
+
+    // First pass: prepare data
+    for (const row of rows) {
       const name = String(row['name'] || row['nama'] || '').trim();
       const nis = String(row['nis'] || '').trim();
       if (!name || !nis) {
         failed++;
-        return result;
+        continue;
       }
 
       const classItem = resolveClass(row);
-      const email = String(row['email'] || '').trim() || `${toEmailLocalPart(nis || name)}@local.app`;
+      const email = `${nis}@local.app`;
+      const password = `${nis}@pelita`;
 
-      result.push({
+      payloads.push({
         name,
         nis,
         email,
@@ -189,9 +196,43 @@ const Students = () => {
         ...(user?.schoolId ? { school_id: user.schoolId } : {}),
       });
 
-      return result;
-    }, []);
+      authAccounts.push({ email, password, nis, name });
+    }
 
+    // Create auth accounts for each student
+    for (let i = 0; i < authAccounts.length; i++) {
+      const account = authAccounts[i];
+      try {
+        const { error } = await supabase.auth.signUp({
+          email: account.email,
+          password: account.password,
+          options: {
+            data: {
+              name: account.name,
+              nis: account.nis,
+            }
+          }
+        });
+
+        if (error) {
+          // If user already exists, that's OK
+          if (!error.message.includes('already registered')) {
+            console.error(`Auth failed for ${account.email}:`, error);
+            authFailed++;
+          }
+        } else {
+          authCreated++;
+        }
+
+        // Report progress
+        options?.onProgress?.({ current: i + 1, total: authAccounts.length });
+      } catch (err) {
+        console.error(`Auth error for ${account.email}:`, err);
+        authFailed++;
+      }
+    }
+
+    // Insert student records
     const result = await batchInsertRecords({
       table: 'students',
       rows: payloads,
@@ -199,6 +240,13 @@ const Students = () => {
     });
 
     await refetch();
+
+    // Show summary
+    toast.success(`Import selesai: ${result.success} siswa, ${authCreated} akun auth dibuat`);
+    if (authFailed > 0) {
+      toast.warning(`${authFailed} akun gagal dibuat (mungkin sudah ada)`);
+    }
+
     return { success: result.success, failed: result.failed + failed };
   };
 
@@ -211,26 +259,30 @@ const Students = () => {
     try {
       const credentials = students.map(student => {
         const className = getClassName(student.class_id);
-        const username = generateUsername(student.name, className);
-        const password = generatePassword();
-        const email = generateEmail(username);
+        const email = `${student.nis}@local.app`;
+        const password = `${student.nis}@pelita`;
         
         return {
+          'No': '',
           'Nama': student.name,
           'NIS': student.nis,
           'Kelas': className,
-          'Username': username,
+          'Jurusan': student.major || '',
+          'Username (NIS)': student.nis,
           'Password': password,
           'Email': email,
         };
       });
 
+      // Add numbering
+      credentials.forEach((c, i) => c['No'] = i + 1);
+
       const ws = XLSX.utils.json_to_sheet(credentials);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Credentials');
-      XLSX.writeFile(wb, 'siswa_credentials.xlsx');
+      XLSX.writeFile(wb, `siswa_credentials_${new Date().toISOString().split('T')[0]}.xlsx`);
       
-      toast.success('Credentials berhasil diexport');
+      toast.success(`Credentials ${credentials.length} siswa berhasil diexport!`);
     } catch (error) {
       console.error('Export error:', error);
       toast.error('Gagal export credentials');
