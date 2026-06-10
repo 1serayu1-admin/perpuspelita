@@ -3,7 +3,7 @@ import { AppLayout } from '@/layouts/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolData } from '@/hooks/useSchoolData';
 import { getSupabase } from '@/integrations/supabase/client';
-import { Search, Plus, Edit, Trash2, CreditCard, CalendarDays, Upload } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, CreditCard, CalendarDays, Upload, Download } from 'lucide-react';
 import { teacherSchema } from '@/lib/validation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import * as XLSX from 'xlsx';
 
 interface DbTeacher {
   id: string;
@@ -98,6 +99,39 @@ const Teachers = () => {
       refetch();
     } else {
       toast.success(newStatus ? 'Keanggotaan diaktifkan' : 'Keanggotaan dinonaktifkan');
+    }
+  };
+
+  const handleExportCredentials = async () => {
+    if (teachers.length === 0) {
+      toast.error('Tidak ada data guru untuk diexport');
+      return;
+    }
+
+    try {
+      const credentials = teachers.map((teacher, index) => {
+        const email = teacher.nip;
+        const password = teacher.nip;
+
+        return {
+          No: index + 1,
+          Nama: teacher.name,
+          NIP: teacher.nip,
+          Email: email,
+          Password: password,
+          Status: teacher.is_active ? 'Aktif' : 'Nonaktif'
+        };
+      });
+
+      const ws = XLSX.utils.json_to_sheet(credentials);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Credentials');
+      XLSX.writeFile(wb, `guru_credentials_${new Date().toISOString().split('T')[0]}.xlsx`);
+      
+      toast.success(`Credentials ${credentials.length} guru berhasil diexport!`);
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Gagal export credentials');
     }
   };
 
@@ -286,6 +320,9 @@ const Teachers = () => {
           <div className="flex gap-2">
             <Button size="sm" variant="outline" onClick={() => setCsvOpen(true)}>
               <Upload className="w-4 h-4 mr-1" /> Import CSV
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleExportCredentials}>
+              <Download className="w-4 h-4 mr-1" /> Export Credentials
             </Button>
             <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditItem(null); }}>
               <DialogTrigger asChild><Button size="sm" variant="gradient"><Plus className="w-4 h-4 mr-1" /> Tambah Guru</Button></DialogTrigger>
