@@ -90,12 +90,23 @@ export async function loginWithEmail(email: string, password: string) {
   const searchEmail = email.toLowerCase();
   const searchEmailWithoutDomain = searchEmail.replace(/@local\.app$/, '');
   
-  const user = getAllUsers().find(
+  // Debug: Log all users for troubleshooting
+  const allUsers = getAllUsers();
+  console.log('Login debug - Searching for:', searchEmail);
+  console.log('All users count:', allUsers.length);
+  console.log('Dynamic users:', allUsers.filter(u => u.id?.startsWith('user-')).map(u => ({ email: u.email, role: u.role })));
+  
+  const user = allUsers.find(
     u => {
       const userEmail = u.email.toLowerCase();
       // Match: exact email, or email without domain, or user stored without domain
-      return (userEmail === searchEmail || userEmail === searchEmailWithoutDomain) 
-        && u.password === password;
+      const emailMatches = (userEmail === searchEmail || userEmail === searchEmailWithoutDomain);
+      
+      // Support both password formats: with @pelita (new) and without (old)
+      const passwordWithoutSuffix = password.replace(/@pelita$/, '');
+      const passwordMatches = (u.password === password || u.password === passwordWithoutSuffix || u.email === password || u.email === passwordWithoutSuffix);
+      
+      return emailMatches && passwordMatches;
     }
   );
 
