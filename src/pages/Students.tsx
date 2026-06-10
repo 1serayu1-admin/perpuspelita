@@ -167,11 +167,8 @@ const Students = () => {
     options?: { onProgress?: (progress: { current: number; total: number }) => void }
   ) => {
     let failed = 0;
-    let authCreated = 0;
-    let authFailed = 0;
 
     const payloads = [] as Record<string, any>[];
-    const authAccounts = [] as { email: string; password: string; nis: string; name: string }[];
 
     // First pass: prepare data
     for (const row of rows) {
@@ -195,42 +192,11 @@ const Students = () => {
         is_active: parseActiveStatus(String(row['status'] || 'active')),
         ...(user?.schoolId ? { school_id: user.schoolId } : {}),
       });
-
-      authAccounts.push({ email, password, nis, name });
     }
 
-    // Create auth accounts for each student
-    for (let i = 0; i < authAccounts.length; i++) {
-      const account = authAccounts[i];
-      try {
-        const { error } = await supabase.auth.signUp({
-          email: account.email,
-          password: account.password,
-          options: {
-            data: {
-              name: account.name,
-              nis: account.nis,
-            }
-          }
-        });
-
-        if (error) {
-          // If user already exists, that's OK
-          if (!error.message.includes('already registered')) {
-            console.error(`Auth failed for ${account.email}:`, error);
-            authFailed++;
-          }
-        } else {
-          authCreated++;
-        }
-
-        // Report progress
-        options?.onProgress?.({ current: i + 1, total: authAccounts.length });
-      } catch (err) {
-        console.error(`Auth error for ${account.email}:`, err);
-        authFailed++;
-      }
-    }
+    // Skip auth account creation for now to avoid rate limits
+    // Students will signup manually with email: nis@local.app, password: nis@pelita
+    toast.info('Mengimpor data siswa saja (auth account akan dibuat manual)...');
 
     // Insert student records
     const result = await batchInsertRecords({
@@ -242,9 +208,9 @@ const Students = () => {
     await refetch();
 
     // Show summary
-    toast.success(`Import selesai: ${result.success} siswa, ${authCreated} akun auth dibuat`);
-    if (authFailed > 0) {
-      toast.warning(`${authFailed} akun gagal dibuat (mungkin sudah ada)`);
+    toast.success(`Import selesai: ${result.success} siswa masuk database`);
+    if (failed > 0) {
+      toast.warning(`${failed} baris gagal diproses`);
     }
 
     return { success: result.success, failed: result.failed + failed };
