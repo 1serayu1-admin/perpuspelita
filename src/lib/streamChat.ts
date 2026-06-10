@@ -1,7 +1,7 @@
 import { getSupabase } from '@/integrations/supabase/client';
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
-const CURRENT_USER_KEY = 'perpuspelita_current_user';
+const USER_STORAGE_KEY = 'perpuspelita_user';
 
 export async function sendChatMessage(messages: ChatMessage[], context?: string) {
   const supabase = getSupabase();
@@ -12,7 +12,7 @@ export async function sendChatMessage(messages: ChatMessage[], context?: string)
   // Check for hardcoded user if no Supabase session
   let currentUser = null;
   if (!session) {
-    const storedUser = localStorage.getItem(CURRENT_USER_KEY);
+    const storedUser = localStorage.getItem(USER_STORAGE_KEY);
     if (storedUser) {
       try {
         currentUser = JSON.parse(storedUser);
