@@ -162,31 +162,53 @@ export default function Books() {
         // Process books with proper field mapping
         // Support both old template format and new inventarisasi format
         const booksToInsert = data.map((row: any) => {
-          // Try multiple possible column names for each field
-          const stock = parseInt(row['Jumlah'] || row['Banyak Buku'] || row['Banyak'] || '0') || 0;
+          // DEBUG: Log all available keys
+          console.log('CSV Row keys:', Object.keys(row));
+          console.log('CSV Row values:', row);
+          
+          // Try multiple possible column names for each field (case insensitive)
+          const getValue = (keys: string[]) => {
+            for (const key of keys) {
+              // Try exact match first
+              if (row[key] !== undefined && row[key] !== '') return row[key];
+              // Try case insensitive
+              const foundKey = Object.keys(row).find(k => k.toLowerCase() === key.toLowerCase());
+              if (foundKey && row[foundKey] !== undefined && row[foundKey] !== '') return row[foundKey];
+            }
+            return '';
+          };
+          
+          const stock = parseInt(getValue(['Jumlah', 'Banyak Buku', 'Banyak', 'jumlah', 'banyak buku', 'banyak'])) || 0;
           
           // Determine category type from various possible column names
           let categoryType = 'Non Fiksi';
-          const jenisVal = row['Jenis Buku'] || row['Fiksi'] || row['Non Fiksi'] || '';
+          const jenisVal = getValue(['Jenis Buku', 'Fiksi', 'Non Fiksi', 'jenis buku', 'fiksi', 'non fiksi']);
           if (jenisVal === '?' || jenisVal === 'V' || jenisVal?.toLowerCase().includes('fiksi')) {
             categoryType = jenisVal.includes('Non') ? 'Non Fiksi' : 'Fiksi';
           }
           
           // Get source (sumber) - BOS, DAK, or Lainnya
           let source = '-';
-          if (row['BOS'] && row['BOS'] !== '') source = 'BOS';
-          else if (row['DAK'] && row['DAK'] !== '') source = 'DAK';
-          else if (row['Lainnya'] && row['Lainnya'] !== '') source = 'Lainnya';
-          else if (row['Sumber']) source = row['Sumber'];
+          if (getValue(['BOS', 'bos'])) source = 'BOS';
+          else if (getValue(['DAK', 'dak'])) source = 'DAK';
+          else if (getValue(['Lainnya', 'lainnya'])) source = 'Lainnya';
+          else if (getValue(['Sumber', 'sumber'])) source = getValue(['Sumber', 'sumber']);
+          
+          const title = getValue(['Judul Buku', 'Judul', 'judul buku', 'judul']);
+          const author = getValue(['Penyusun/Pengarang', 'Penyusun', 'Pengarang', 'penyusun/pengarang', 'penyusun', 'pengarang']);
+          const publisher = getValue(['Penerbit', 'penerbit']);
+          const year = parseInt(getValue(['Tahun Terbit', 'Tahun', 'tahun terbit', 'tahun'])) || new Date().getFullYear();
+          
+          console.log('Parsed values:', { title, author, publisher, year, stock });
           
           return {
             categoryType, // frontend-only, stripped before insert
             // DB-valid fields only below:
             school_id: schoolId || null, // Ensure null if undefined
-            title: (row['Judul Buku'] || row['Judul'] || 'Tanpa Judul').trim(),
-            author: (row['Penyusun/Pengarang'] || row['Penyusun'] || row['Pengarang'] || '-').trim(),
-            publisher: (row['Penerbit'] || '-').trim(),
-            year: parseInt(row['Tahun Terbit'] || row['Tahun']) || new Date().getFullYear(),
+            title: title.trim() || 'Tanpa Judul',
+            author: author.trim() || '-',
+            publisher: publisher.trim() || '-',
+            year,
             isbn: '',
             shelf_location: '',
             stock,
