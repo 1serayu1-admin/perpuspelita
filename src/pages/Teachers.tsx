@@ -171,10 +171,10 @@ const Teachers = () => {
     const namesList: string[] = [];
 
     const payloads = rows.reduce<Record<string, any>[]>((result, row) => {
-      // Support multiple column name variations
-      const name = String(row['name'] || row['nama'] || row['Nama'] || '').trim();
-      const nip = String(row['nip'] || row['NIP'] || row['No'] || '').trim();
-      const subject = String(row['subject'] || row['mata_pelajaran'] || row['mata pelajaran'] || row['Subject'] || '-').trim();
+      // Support multiple column name variations (termasuk format CSV 'data guru perpus.csv': No, Nama, NIK)
+      const name = String(row['name'] || row['nama'] || row['Nama'] || row['NAMA'] || '').trim();
+      const nip = String(row['nip'] || row['NIP'] || row['nik'] || row['NIK'] || row['No'] || row['NO'] || '').trim();
+      const subject = String(row['subject'] || row['mata_pelajaran'] || row['mata pelajaran'] || row['Subject'] || row['SUBJECT'] || '-').trim();
 
       if (!name) {
         failed++;
@@ -460,14 +460,14 @@ const Teachers = () => {
           title="Import Guru dari CSV"
           columns={[
             { key: 'id', label: 'ID', sample: '1' },
-            { key: 'nip', label: 'NIP', required: true, sample: '2001' },
-            { key: 'name', label: 'Name', required: true, aliases: ['nama'], sample: 'Guru 1' },
-            { key: 'subject', label: 'Subject', required: true, aliases: ['mata_pelajaran', 'mata pelajaran'], sample: 'Sejarah' },
+            { key: 'nip', label: 'NIP/NIK', required: true, aliases: ['nik', 'NIK', 'No', 'NO'], sample: '2001' },
+            { key: 'name', label: 'Name/Nama', required: true, aliases: ['nama', 'Nama', 'NAMA'], sample: 'Guru 1' },
+            { key: 'subject', label: 'Subject', aliases: ['mata_pelajaran', 'mata pelajaran', 'Subject', 'SUBJECT'], sample: '-' },
             { key: 'status', label: 'Status', sample: 'active' },
             { key: 'email', label: 'Email', sample: 'guru2001@dummy.local' },
           ]}
           onImport={handleCsvImport}
-          templateFilename="template-guru-dummy.csv"
+          templateFilename="template-guru.csv"
         />
       </div>
     </AppLayout>
