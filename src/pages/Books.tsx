@@ -178,8 +178,6 @@ export default function Books() {
             return '';
           };
           
-          const stock = parseInt(getValue(['Jumlah', 'Banyak Buku', 'Banyak', 'jumlah', 'banyak buku', 'banyak'])) || 0;
-          
           // Determine category type from various possible column names
           let categoryType = 'Non Fiksi';
           const jenisVal = getValue(['Jenis Buku', 'Fiksi', 'Non Fiksi', 'jenis buku', 'fiksi', 'non fiksi']);
@@ -194,10 +192,12 @@ export default function Books() {
           else if (getValue(['Lainnya', 'lainnya'])) source = 'Lainnya';
           else if (getValue(['Sumber', 'sumber'])) source = getValue(['Sumber', 'sumber']);
           
-          const title = getValue(['Judul Buku', 'Judul', 'judul buku', 'judul']);
-          const author = getValue(['Penyusun/Pengarang', 'Penyusun', 'Pengarang', 'penyusun/pengarang', 'penyusun', 'pengarang']);
-          const publisher = getValue(['Penerbit', 'penerbit']);
-          const year = parseInt(getValue(['Tahun Terbit', 'Tahun', 'tahun terbit', 'tahun'])) || new Date().getFullYear();
+          // Support __EMPTY_X keys from Excel-exported CSV
+          const title = getValue(['Judul Buku', 'Judul', 'judul buku', 'judul', '__EMPTY_1']);
+          const author = getValue(['Penyusun/Pengarang', 'Penyusun', 'Pengarang', 'penyusun/pengarang', 'penyusun', 'pengarang', '__EMPTY_2']);
+          const publisher = getValue(['Penerbit', 'penerbit', '__EMPTY_3']);
+          const year = parseInt(getValue(['Tahun Terbit', 'Tahun', 'tahun terbit', 'tahun', '__EMPTY_4', '__EMPTY_5'])) || new Date().getFullYear();
+          const stock = parseInt(getValue(['Jumlah', 'Banyak Buku', 'Banyak', 'jumlah', 'banyak buku', 'banyak', '__EMPTY_7'])) || 0;
           
           console.log('Parsed values:', { title, author, publisher, year, stock });
           
