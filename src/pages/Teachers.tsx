@@ -252,7 +252,15 @@ const Teachers = () => {
       }
     }
 
+    console.log('Import result:', result);
     await refetch();
+    console.log('Refetch completed');
+    
+    // Force refresh after short delay to ensure data displays
+    setTimeout(() => {
+      console.log('Forcing data refresh...');
+      refetch();
+    }, 1000);
     
     if (usersCreated > 0) {
       toast.success(`Import selesai! ${result.success} guru masuk database, ${usersCreated} akun login dibuat (NIP/NIP)`);
