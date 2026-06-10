@@ -552,7 +552,7 @@ const Students = () => {
             { key: 'email', label: 'Email', sample: 'siswa1001@dummy.local' },
           ]}
           onImport={handleCsvImport}
-          templateFilename="template-siswa-dummy.csv"
+          templateFilename="template-siswa.csv"
         />
       </div>
     </AppLayout>

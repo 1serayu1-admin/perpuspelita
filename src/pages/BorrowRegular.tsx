@@ -252,7 +252,7 @@ const BorrowRegular = () => {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={() => setCsvOpen(true)}>
-              <Upload className="w-4 h-4 mr-1" /> Import CSV Dummy
+              <Upload className="w-4 h-4 mr-1" /> Import CSV
             </Button>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" /> Buat Peminjaman</Button></DialogTrigger>
@@ -356,7 +356,7 @@ const BorrowRegular = () => {
         <CsvImportDialog
           open={csvOpen}
           onOpenChange={setCsvOpen}
-          title="Import Transaksi Peminjaman Dummy"
+          title="Import Transaksi Peminjaman"
           columns={[
             { key: 'id', label: 'ID', sample: '1' },
             { key: 'user_type', label: 'User Type', required: true, sample: 'student' },
@@ -367,7 +367,7 @@ const BorrowRegular = () => {
             { key: 'status', label: 'Status', sample: 'borrowed' },
           ]}
           onImport={handleCsvImport}
-          templateFilename="template-borrowings-dummy.csv"
+          templateFilename="template-borrowings.csv"
         />
       </div>
     </AppLayout>
