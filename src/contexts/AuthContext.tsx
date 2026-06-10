@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useMemo, useCallback, useEffect, ReactNode } from 'react';
 import type { AppRole, User } from '@/lib/types';
 import { toast } from 'sonner';
+import { loginWithEmail, logoutUser, getCurrentSession, onAuthStateChange, getUserRole } from '@/services/authService';
 
 export type { AppRole };
 
@@ -8,95 +9,99 @@ interface AuthContextValue {
   user: User | null;
   role: AppRole | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const DEMO_USERS = {
-  admin: {
-    password: 'admin123',
-    role: 'admin',
-    name: 'Demo Admin'
-  },
-  guru: {
-    password: 'guru123',
-    role: 'guru',
-    name: 'Demo Guru'
-  },
-  siswa: {
-    password: 'siswa123',
-    role: 'siswa',
-    name: 'Demo Siswa'
-  },
-  kepsek: {
-    password: 'kepsek123',
-    role: 'school_super_admin',
-    name: 'Demo Kepala Sekolah'
-  }
-};
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // APP STARTUP - Restore demo-auth from localStorage
+  // APP STARTUP - Restore session from Supabase
   useEffect(() => {
-    const storedAuth = localStorage.getItem('demo-auth');
-    if (storedAuth) {
+    const initAuth = async () => {
       try {
-        const parsedUser = JSON.parse(storedAuth);
-        setUser(parsedUser);
+        const { data: { session } } = await getCurrentSession();
+        
+        if (session?.user) {
+          const { role, schoolId } = await getUserRole(session.user.id);
+          const userProfile: User = {
+            id: session.user.id,
+            email: session.user.email || '',
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+            role: role as AppRole,
+            appRole: role as AppRole,
+            schoolId: schoolId || undefined,
+          };
+          setUser(userProfile);
+        }
       } catch (error) {
-        console.error('Failed to parse stored auth:', error);
-        localStorage.removeItem('demo-auth');
+        console.error('Failed to restore session:', error);
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
+    };
+
+    initAuth();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.id);
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        const { role, schoolId } = await getUserRole(session.user.id);
+        const userProfile: User = {
+          id: session.user.id,
+          email: session.user.email || '',
+          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+          role: role as AppRole,
+          appRole: role as AppRole,
+          schoolId: schoolId || undefined,
+        };
+        setUser(userProfile);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, []);
 
-  const login = useCallback(async (username: string, password: string) => {
-    console.log('Login attempt:', { username, password });
+  const login = useCallback(async (email: string, password: string) => {
+    console.log('Login attempt:', { email });
     
-    // CHECK DEMO USERS (case insensitive)
-    const normalizedUsername = username.toLowerCase();
-    const demoUser = DEMO_USERS[normalizedUsername as keyof typeof DEMO_USERS];
-    console.log('Demo user found:', demoUser);
-    
-    if (demoUser && demoUser.password === password) {
-      // CREATE FAKE USER
-      const fakeUser: User = {
-        id: `demo-${normalizedUsername}`,
-        email: `${normalizedUsername}@demo.local`,
-        name: demoUser.name,
-        role: demoUser.role as AppRole,
-        appRole: demoUser.role as AppRole,
-        schoolId: 'demo-school'
-      };
+    try {
+      const { data, error } = await loginWithEmail(email, password);
+      
+      if (error) {
+        console.error('Login error:', error);
+        toast.error(error.message || 'Gagal login');
+        return { success: false, message: error.message };
+      }
 
-      console.log('Setting user:', fakeUser);
-      
-      // SET USER AND STORE IN LOCALSTORAGE
-      setUser(fakeUser);
-      localStorage.setItem('demo-auth', JSON.stringify(fakeUser));
-      
-      console.log('Login success for role:', demoUser.role);
-      toast.success(`Masuk sebagai ${demoUser.name}`);
+      // Session will be restored by onAuthStateChange
+      toast.success('Login berhasil!');
       return { success: true };
+    } catch (err: any) {
+      console.error('Login failed:', err);
+      toast.error(err.message || 'Gagal login');
+      return { success: false, message: err.message || 'Gagal login' };
     }
-
-    console.log('Login failed: invalid credentials');
-    // INVALID CREDENTIALS
-    toast.error('Username atau password salah');
-    return { success: false, message: 'Username atau password salah' };
   }, []);
 
   const logout = useCallback(async () => {
-    // CLEAR LOCALSTORAGE AND USER
-    localStorage.removeItem('demo-auth');
-    setUser(null);
-    toast.success('Berhasil keluar');
+    try {
+      await logoutUser();
+      setUser(null);
+      toast.success('Berhasil keluar');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Gagal keluar');
+    }
   }, []);
 
   const role = useMemo<AppRole | null>(() => user?.appRole ?? user?.role ?? null, [user]);

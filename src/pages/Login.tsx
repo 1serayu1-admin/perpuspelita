@@ -88,22 +88,6 @@ export default function Login() {
     }
   };
 
-  const fillDemo = async () => {
-    setEmail('admin');
-    setPassword('admin123');
-    setIsLoading(true);
-    try {
-      const { success, message } = await login('admin', 'admin123');
-      if (success) {
-        toast.success('Auto Login Berhasil!');
-        navigate('/dashboard');
-      } else {
-        toast.error(message || 'Gagal login otomatis');
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen w-full flex bg-gradient-to-br from-slate-50 to-blue-50 overflow-hidden">
@@ -251,22 +235,6 @@ export default function Login() {
                   : 'Belum punya akun? Daftar'}
               </button>
             </div>
-
-            {/* Demo button */}
-            {!isSignUp && (
-              <div className="mt-6 pt-6 border-t border-gray-100">
-                <button
-                  onClick={fillDemo}
-                  disabled={isLoading}
-                  className="w-full py-2.5 px-4 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  ⚡ Coba Demo Admin — Login Otomatis
-                </button>
-                <p className="text-[10px] text-center text-gray-400 mt-2 uppercase tracking-widest">
-                  Akses penuh untuk pengujian
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Footer */}
