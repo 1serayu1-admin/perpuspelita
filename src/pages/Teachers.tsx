@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolData } from '@/hooks/useSchoolData';
+import { getSupabase } from '@/integrations/supabase/client';
 import { Search, Plus, Edit, Trash2, CreditCard, CalendarDays, Upload } from 'lucide-react';
 import { teacherSchema } from '@/lib/validation';
 import { Input } from '@/components/ui/input';
@@ -130,35 +131,93 @@ const Teachers = () => {
     setMembershipDialogOpen(false);
   };
 
+  // Check for duplicate NIP/name in database
+  const checkDuplicates = async (names: string[]) => {
+    const supabase = getSupabase();
+    if (!supabase) return [];
+    const { data: existing } = await supabase
+      .from('teachers')
+      .select('id, name, nip')
+      .in('name', names);
+    return existing || [];
+  };
+
+  // Delete teachers by name
+  const deleteTeachersByName = async (names: string[]) => {
+    const supabase = getSupabase();
+    if (!supabase) {
+      toast.error('Database connection failed');
+      return false;
+    }
+    const { error } = await supabase
+      .from('teachers')
+      .delete()
+      .in('name', names);
+    if (error) {
+      toast.error('Gagal menghapus data: ' + error.message);
+      return false;
+    }
+    toast.success(`${names.length} data lama berhasil dihapus`);
+    await refetch();
+    return true;
+  };
+
   const handleCsvImport = async (
     rows: Record<string, string>[],
     options?: { onProgress?: (progress: { current: number; total: number }) => void }
   ) => {
     let failed = 0;
+    const namesList: string[] = [];
 
     const payloads = rows.reduce<Record<string, any>[]>((result, row) => {
-      const name = String(row['name'] || row['nama'] || '').trim();
-      const nip = String(row['nip'] || '').trim();
-      const subject = String(row['subject'] || row['mata_pelajaran'] || row['mata pelajaran'] || '').trim();
+      // Support multiple column name variations
+      const name = String(row['name'] || row['nama'] || row['Nama'] || '').trim();
+      const nip = String(row['nip'] || row['NIP'] || row['No'] || '').trim();
+      const subject = String(row['subject'] || row['mata_pelajaran'] || row['mata pelajaran'] || row['Subject'] || '-').trim();
 
-      if (!name || !nip || !subject) {
+      if (!name) {
         failed++;
         return result;
       }
 
-      const email = String(row['email'] || '').trim() || `${toEmailLocalPart(nip || name)}@dummy.local`;
+      // Generate email from name if not provided
+      const email = String(row['email'] || row['Email'] || '').trim() || `${toEmailLocalPart(nip || name)}@local.app`;
 
       result.push({
         name,
-        nip,
-        subject,
+        nip: nip || '-', // Use '-' if no NIP
+        subject: subject || '-', // Use '-' if no subject
         email,
         is_active: parseActiveStatus(String(row['status'] || 'active')),
         ...(user?.schoolId ? { school_id: user.schoolId } : {}),
       });
-
+      
+      namesList.push(name);
       return result;
     }, []);
+
+    // Check for duplicates
+    const duplicates = await checkDuplicates(namesList);
+    if (duplicates.length > 0) {
+      const duplicateNames = duplicates.map(d => d.name).join(', ');
+      const confirmDelete = window.confirm(
+        `Ditemukan ${duplicates.length} data dengan nama yang sama:\n${duplicateNames}\n\n` +
+        `Apakah Anda ingin menghapus data lama dan mengganti dengan data baru?\n\n` +
+        `Klik "OK" untuk hapus data lama dan import ulang.\n` +
+        `Klik "Cancel" untuk membatalkan import.`
+      );
+      
+      if (!confirmDelete) {
+        toast.info('Import dibatalkan. Tidak ada data yang diubah.');
+        return { success: 0, failed: payloads.length };
+      }
+
+      // Delete duplicates
+      const deleted = await deleteTeachersByName(duplicates.map(d => d.name));
+      if (!deleted) {
+        return { success: 0, failed: payloads.length };
+      }
+    }
 
     const result = await batchInsertRecords({
       table: 'teachers',
@@ -167,6 +226,7 @@ const Teachers = () => {
     });
 
     await refetch();
+    toast.success(`Import selesai: ${result.success} guru masuk database`);
     return { success: result.success, failed: result.failed + failed };
   };
 
