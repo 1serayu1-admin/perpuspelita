@@ -107,7 +107,8 @@ export default function Books() {
         }
 
         if (!schoolId) {
-          throw new Error('Tidak dapat menentukan sekolah. Pastikan Anda terhubung dengan sekolah.');
+          console.warn('No school_id found, using null (global access)');
+          // Allow upload without school_id - will be null in database
         }
 
         // Process books with proper field mapping

@@ -33,17 +33,17 @@ export async function getUserRole(userId: string, retryCount = 0): Promise<{ rol
   }
 
   try {
-    // Query with longer timeout (5 seconds) and limit 1 for faster response
+    // Query with longer timeout (10 seconds) and simpler select
     const { data, error } = await Promise.race([
       supabase
         .from("user_roles")
-        .select("role, school_id")
+        .select("role, school_id", { count: 'exact', head: false })
         .eq("user_id", userId)
         .limit(1)
-        .single(),
+        .maybeSingle(),
 
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("timeout")), 5000)
+        setTimeout(() => reject(new Error("timeout")), 10000)
       )
     ]) as any;
 
