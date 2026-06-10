@@ -20,9 +20,9 @@ async function fetchAllRows(
         .from(table)
         .select(options?.select || '*');
 
-      // Only filter by school_id for non-students tables
-      // Students table should show all data for now
-      if (schoolId && table !== 'students') {
+      // Only filter by school_id for specific tables
+      // Students and books tables should show all data if no school_id
+      if (schoolId && table !== 'students' && table !== 'books') {
         query = query.eq('school_id', schoolId);
       }
 

@@ -111,6 +111,42 @@ export default function Books() {
           // Allow upload without school_id - will be null in database
         }
 
+        // Check for existing books by title
+        const titlesToCheck = data.map((row: any) => 
+          (row['Judul Buku'] || row['Judul'] || 'Tanpa Judul').trim()
+        ).filter(t => t !== 'Tanpa Judul');
+        
+        const { data: existingBooks } = await supabase
+          .from('books')
+          .select('title')
+          .in('title', titlesToCheck);
+          
+        const existingTitles = new Set(existingBooks?.map(b => b.title) || []);
+        
+        if (existingTitles.size > 0) {
+          const confirmReplace = window.confirm(
+            `Ditemukan ${existingTitles.size} buku dengan judul yang sudah ada:\n` +
+            Array.from(existingTitles).slice(0, 5).join(', ') +
+            (existingTitles.size > 5 ? `... dan ${existingTitles.size - 5} lainnya` : '') +
+            `\n\nApakah Anda ingin:` +
+            `\n- Klik "OK" untuk mengganti data lama dengan data baru` +
+            `\n- Klik "Cancel" untuk melewati data yang sudah ada`
+          );
+          
+          if (confirmReplace) {
+            // Delete existing books
+            const { error: deleteError } = await supabase
+              .from('books')
+              .delete()
+              .in('title', Array.from(existingTitles));
+            if (deleteError) {
+              toast.error('Gagal menghapus data lama: ' + deleteError.message);
+            } else {
+              toast.success(`${existingTitles.size} data lama dihapus`);
+            }
+          }
+        }
+
         // Process books with proper field mapping
         // Support both old template format and new inventarisasi format
         const booksToInsert = data.map((row: any) => {
