@@ -162,6 +162,30 @@ const Students = () => {
     setMembershipDialogOpen(false);
   };
 
+  // Check for duplicate NIS in database
+  const checkDuplicates = async (nisList: string[]) => {
+    const { data: existing } = await supabase
+      .from('students')
+      .select('id, nis, name')
+      .in('nis', nisList);
+    return existing || [];
+  };
+
+  // Delete students by NIS
+  const deleteStudentsByNis = async (nisList: string[]) => {
+    const { error } = await supabase
+      .from('students')
+      .delete()
+      .in('nis', nisList);
+    if (error) {
+      toast.error('Gagal menghapus data: ' + error.message);
+      return false;
+    }
+    toast.success(`${nisList.length} data lama berhasil dihapus`);
+    await refetch();
+    return true;
+  };
+
   const handleCsvImport = async (
     rows: Record<string, string>[],
     options?: { onProgress?: (progress: { current: number; total: number }) => void }
@@ -169,6 +193,7 @@ const Students = () => {
     let failed = 0;
 
     const payloads = [] as Record<string, any>[];
+    const nisList = [] as string[];
 
     // First pass: prepare data
     for (const row of rows) {
@@ -180,23 +205,41 @@ const Students = () => {
       }
 
       const classItem = resolveClass(row);
-      const email = `${nis}@local.app`;
-      const password = `${nis}@pelita`;
 
       payloads.push({
         name,
         nis,
-        email,
+        email: `${nis}@local.app`,
         class_id: classItem?.id || null,
         major: classItem?.major || '',
         is_active: parseActiveStatus(String(row['status'] || 'active')),
         ...(user?.schoolId ? { school_id: user.schoolId } : {}),
       });
+      nisList.push(nis);
     }
 
-    // Skip auth account creation for now to avoid rate limits
-    // Students will signup manually with email: nis@local.app, password: nis@pelita
-    toast.info('Mengimpor data siswa saja (auth account akan dibuat manual)...');
+    // Check for duplicates
+    const duplicates = await checkDuplicates(nisList);
+    if (duplicates.length > 0) {
+      const duplicateNis = duplicates.map(d => d.nis).join(', ');
+      const confirmDelete = window.confirm(
+        `Ditemukan ${duplicates.length} data dengan NIS yang sama:\n${duplicateNis}\n\n` +
+        `Apakah Anda ingin menghapus data lama dan mengganti dengan data baru?\n\n` +
+        `Klik "OK" untuk hapus data lama dan import ulang.\n` +
+        `Klik "Cancel" untuk membatalkan import.`
+      );
+      
+      if (!confirmDelete) {
+        toast.info('Import dibatalkan. Tidak ada data yang diubah.');
+        return { success: 0, failed: payloads.length };
+      }
+
+      // Delete duplicates
+      const deleted = await deleteStudentsByNis(duplicates.map(d => d.nis));
+      if (!deleted) {
+        return { success: 0, failed: payloads.length };
+      }
+    }
 
     // Insert student records
     const result = await batchInsertRecords({
