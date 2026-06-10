@@ -86,8 +86,17 @@ function getAllUsers(): HardcodedUser[] {
 
 export async function loginWithEmail(email: string, password: string) {
   // Find user in ALL users (Super Admin + Dynamic) - case insensitive
+  // Support both: "user@local.app" and "user" (without domain)
+  const searchEmail = email.toLowerCase();
+  const searchEmailWithoutDomain = searchEmail.replace(/@local\.app$/, '');
+  
   const user = getAllUsers().find(
-    u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
+    u => {
+      const userEmail = u.email.toLowerCase();
+      // Match: exact email, or email without domain, or user stored without domain
+      return (userEmail === searchEmail || userEmail === searchEmailWithoutDomain) 
+        && u.password === password;
+    }
   );
 
   if (!user) {
