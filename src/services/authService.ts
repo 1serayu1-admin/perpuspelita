@@ -40,6 +40,17 @@ const DEFAULT_ADMIN: HardcodedUser = {
   isActive: true,
 };
 
+// 1d. ADMIN PERPUS SEKOLAH (yang diminta user)
+const ADMIN_PERPUS: HardcodedUser = {
+  id: 'admin-perpus-001',
+  email: 'adminperpus@perpuspelita.id',
+  password: 'Admin123!',
+  name: 'Admin Perpustakaan Sekolah',
+  role: 'admin',
+  schoolId: undefined,
+  isActive: true,
+};
+
 // 1c. DEFAULT GURU (for testing CSV import feature)
 const DEFAULT_GURU: HardcodedUser = {
   id: 'guru-001',
@@ -66,7 +77,7 @@ function saveDynamicUsers(users: HardcodedUser[]) {
 
 // 3. Get ALL users (Super Admin + Default + Dynamic)
 function getAllUsers(): HardcodedUser[] {
-  return [SUPER_ADMIN, DEFAULT_ADMIN, DEFAULT_GURU, ...getDynamicUsers()];
+  return [SUPER_ADMIN, DEFAULT_ADMIN, ADMIN_PERPUS, DEFAULT_GURU, ...getDynamicUsers()];
 }
 
 // ============================================
