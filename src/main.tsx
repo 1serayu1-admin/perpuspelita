@@ -11,7 +11,7 @@ import './index.css'
 
 // Pages
 import Dashboard from './pages/Dashboard'
-import Users from './pages/Users'
+import UserManagement from './pages/UserManagement'
 import Login from './pages/Login'
 import Profil from './pages/Profil'
 import TanyaAI from './pages/TanyaAI'
@@ -88,7 +88,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="/activity-log"  element={<ProtectedRoute allowedRoles={ROLES.superOnly}><ActivityLog /></ProtectedRoute>} />
               <Route path="/backup"        element={<ProtectedRoute allowedRoles={ROLES.superOnly}><Backup /></ProtectedRoute>} />
               <Route path="/admin-management" element={<ProtectedRoute allowedRoles={ROLES.superOnly}><AdminManagement /></ProtectedRoute>} />
-              <Route path="/users"         element={<ProtectedRoute allowedRoles={['global_super_admin']}><Users /></ProtectedRoute>} />
+              <Route path="/users"         element={<ProtectedRoute allowedRoles={['global_super_admin']}><UserManagement /></ProtectedRoute>} />
               <Route path="/schools"       element={<ProtectedRoute allowedRoles={ROLES.superOnly}><Schools /></ProtectedRoute>} />
               <Route path="/security"      element={<ProtectedRoute allowedRoles={ROLES.superOnly}><SecurityPanel /></ProtectedRoute>} />
 

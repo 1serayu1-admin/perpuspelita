@@ -14,44 +14,44 @@ export interface HardcodedUser {
   schoolId?: string;
 }
 
-// HARDCODED USER DATABASE
-// Add/Edit users here directly
-const HARDCODED_USERS: HardcodedUser[] = [
-  // Super Admin (Developer)
-  {
-    id: 'superadmin-001',
-    email: 'superadmin@perpuspelita.id',
-    password: 'SuperAdmin123!',
-    name: 'Super Admin Developer',
-    role: 'global_super_admin',
-  },
-  // Admin Sekolah (Perpustakaan)
-  {
-    id: 'admin-001',
-    email: 'admin',
-    password: 'admin',
-    name: 'Admin Perpustakaan',
-    role: 'admin',
-    schoolId: 'school-001', // Default school
-  },
-  // Guru (opsional, bisa tambah nanti)
-  // {
-  //   id: 'guru-001',
-  //   email: 'guru@sekolah.id',
-  //   password: 'guru123',
-  //   name: 'Guru Bahasa',
-  //   role: 'guru',
-  //   schoolId: 'school-001',
-  // },
-];
+// ============================================
+// USER DATABASE - Hybrid approach
+// ============================================
+
+// 1. SUPER ADMIN ONLY (Hardcoded - Master Account)
+const SUPER_ADMIN: HardcodedUser = {
+  id: 'superadmin-001',
+  email: 'superadmin@perpuspelita.id',
+  password: 'SuperAdmin123!',
+  name: 'Super Admin Developer',
+  role: 'global_super_admin',
+};
+
+// 2. DYNAMIC USERS (Stored in localStorage - created by Super Admin)
+// These can be created via UI by Super Admin
+const DYNAMIC_USERS_KEY = 'perpuspelita_dynamic_users';
+
+function getDynamicUsers(): HardcodedUser[] {
+  const stored = localStorage.getItem(DYNAMIC_USERS_KEY);
+  return stored ? JSON.parse(stored) : [];
+}
+
+function saveDynamicUsers(users: HardcodedUser[]) {
+  localStorage.setItem(DYNAMIC_USERS_KEY, JSON.stringify(users));
+}
+
+// 3. Get ALL users (Super Admin + Dynamic)
+function getAllUsers(): HardcodedUser[] {
+  return [SUPER_ADMIN, ...getDynamicUsers()];
+}
 
 // ============================================
 // AUTH FUNCTIONS - No Supabase queries
 // ============================================
 
 export async function loginWithEmail(email: string, password: string) {
-  // Find user in hardcoded list (case insensitive)
-  const user = HARDCODED_USERS.find(
+  // Find user in ALL users (Super Admin + Dynamic) - case insensitive
+  const user = getAllUsers().find(
     u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
   );
 
@@ -124,8 +124,8 @@ export function onAuthStateChange(callback: (event: string, session: any) => voi
 
 // NO DATABASE QUERY NEEDED!
 export async function getUserRole(userId: string): Promise<{ role: string | null; schoolId: string | null; profile: null; error?: string }> {
-  // Find user in hardcoded list (INSTANT - no timeout!)
-  const user = HARDCODED_USERS.find(u => u.id === userId);
+  // Find user in ALL users (INSTANT - no timeout!)
+  const user = getAllUsers().find(u => u.id === userId);
   
   if (!user) {
     return { role: null, schoolId: null, profile: null, error: "User not found" };
@@ -138,15 +138,61 @@ export async function getUserRole(userId: string): Promise<{ role: string | null
   };
 }
 
-// Helper to get all hardcoded users (for admin management)
-export function getHardcodedUsers(): HardcodedUser[] {
-  return [...HARDCODED_USERS];
+// ============================================
+// USER MANAGEMENT (For Super Admin)
+// ============================================
+
+// Get all users for management
+export function getAllUsersList(): HardcodedUser[] {
+  return getAllUsers();
 }
 
-// Helper to add new hardcoded user (in memory only - need to edit code to persist)
-export function addHardcodedUser(user: Omit<HardcodedUser, 'id'>): HardcodedUser {
-  const newUser = { ...user, id: `user-${Date.now()}` };
-  HARDCODED_USERS.push(newUser);
+// Create new user (Super Admin only)
+export function createUser(userData: Omit<HardcodedUser, 'id'>): HardcodedUser {
+  const newUser: HardcodedUser = {
+    ...userData,
+    id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+  };
+  
+  const dynamicUsers = getDynamicUsers();
+  dynamicUsers.push(newUser);
+  saveDynamicUsers(dynamicUsers);
+  
   return newUser;
+}
+
+// Delete user (Super Admin only, cannot delete Super Admin)
+export function deleteUser(userId: string): boolean {
+  if (userId === SUPER_ADMIN.id) {
+    return false; // Cannot delete Super Admin
+  }
+  
+  const dynamicUsers = getDynamicUsers();
+  const filtered = dynamicUsers.filter(u => u.id !== userId);
+  
+  if (filtered.length === dynamicUsers.length) {
+    return false; // User not found
+  }
+  
+  saveDynamicUsers(filtered);
+  return true;
+}
+
+// Update user
+export function updateUser(userId: string, updates: Partial<HardcodedUser>): HardcodedUser | null {
+  if (userId === SUPER_ADMIN.id) {
+    // Cannot update Super Admin via this function
+    return null;
+  }
+  
+  const dynamicUsers = getDynamicUsers();
+  const index = dynamicUsers.findIndex(u => u.id === userId);
+  
+  if (index === -1) return null;
+  
+  dynamicUsers[index] = { ...dynamicUsers[index], ...updates };
+  saveDynamicUsers(dynamicUsers);
+  
+  return dynamicUsers[index];
 }
 
