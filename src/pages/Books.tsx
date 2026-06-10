@@ -81,20 +81,26 @@ export default function Books() {
         let schoolId = authUser?.schoolId;
         
         if (!schoolId) {
-          // Fallback to profile lookup
-          // FIX: Wrap in try-catch for hardcoded users (non-UUID IDs)
-          try {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('school_id')
-              .eq('user_id', user.id)
-              .maybeSingle();
+          // FIX: Skip profile lookup for hardcoded users (non-UUID IDs like 'admin-perpus-001')
+          // Only query profiles if user.id looks like a valid UUID
+          const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.id);
+          
+          if (isValidUUID) {
+            try {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('school_id')
+                .eq('user_id', user.id)
+                .maybeSingle();
 
-            if (profile?.school_id) {
-              schoolId = profile.school_id;
+              if (profile?.school_id) {
+                schoolId = profile.school_id;
+              }
+            } catch (err) {
+              console.log('Profile lookup failed:', err);
             }
-          } catch (err) {
-            console.log('Profile lookup failed (expected for hardcoded users):', err);
+          } else {
+            console.log('Skipping profile lookup for hardcoded user:', user.id);
           }
           
           // If still no schoolId, try to get first school from database
