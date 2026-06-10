@@ -134,7 +134,7 @@ export default function Books() {
           return {
             categoryType, // frontend-only, stripped before insert
             // DB-valid fields only below:
-            school_id: schoolId,
+            school_id: schoolId || null, // Ensure null if undefined
             title: (row['Judul Buku'] || row['Judul'] || 'Tanpa Judul').trim(),
             author: (row['Penyusun/Pengarang'] || row['Penyusun'] || row['Pengarang'] || '-').trim(),
             publisher: (row['Penerbit'] || '-').trim(),
@@ -152,23 +152,35 @@ export default function Books() {
           const { categoryType, ...dbFields } = book; // strip frontend-only field
 
           let categoryId: string | null = null;
-          const { data: existingCategory } = await supabase
-            .from('categories')
-            .select('id')
-            .eq('name', categoryType)
-            .eq('school_id', schoolId)
-            .limit(1)
-            .maybeSingle();
+          
+          // Only try to find/create category if we have a valid school_id
+          if (schoolId && schoolId !== 'undefined') {
+            try {
+              const { data: existingCategory } = await supabase
+                .from('categories')
+                .select('id')
+                .eq('name', categoryType)
+                .eq('school_id', schoolId)
+                .limit(1)
+                .maybeSingle();
 
-          if (existingCategory) {
-            categoryId = existingCategory.id;
-          } else {
-            const { data: newCat } = await supabase
-              .from('categories')
-              .insert({ name: categoryType, school_id: schoolId })
-              .select('id')
-              .single();
-            categoryId = newCat?.id ?? null;
+              if (existingCategory) {
+                categoryId = existingCategory.id;
+              } else {
+                const { data: newCat, error: catError } = await supabase
+                  .from('categories')
+                  .insert({ name: categoryType, school_id: schoolId })
+                  .select('id')
+                  .single();
+                if (catError) {
+                  console.warn('Failed to create category:', catError);
+                } else {
+                  categoryId = newCat?.id ?? null;
+                }
+              }
+            } catch (catErr) {
+              console.warn('Category lookup/creation failed:', catErr);
+            }
           }
 
           // Explicit whitelist — only columns that exist in DB schema
