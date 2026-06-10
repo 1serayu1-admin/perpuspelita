@@ -242,7 +242,7 @@ const Teachers = () => {
               password: payload.nip, // Use NIP as password too
               name: payload.name,
               role: 'guru',
-              schoolId: user?.schoolId || 'school-001',
+              schoolId: null,
             });
             usersCreated++;
           }

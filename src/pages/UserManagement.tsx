@@ -22,7 +22,7 @@ export default function UserManagement() {
     password: '',
     name: '',
     role: 'admin' as AppRole,
-    schoolId: 'school-001',
+    schoolId: '',
   });
 
   useEffect(() => {
@@ -124,7 +124,7 @@ export default function UserManagement() {
       password: user.password,
       name: user.name,
       role: user.role,
-      schoolId: user.schoolId || 'school-001',
+      schoolId: user.schoolId || '',
     });
   };
 
@@ -258,7 +258,7 @@ export default function UserManagement() {
                     password: '',
                     name: '',
                     role: 'admin',
-                    schoolId: 'school-001',
+                    schoolId: '',
                   });
                 }}
                 className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"

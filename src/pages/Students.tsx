@@ -265,7 +265,7 @@ const Students = () => {
               password: payload.nis, // Use NIS as password too
               name: payload.name,
               role: 'siswa',
-              schoolId: user?.schoolId || 'school-001',
+              schoolId: null,
             });
             usersCreated++;
           }

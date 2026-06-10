@@ -26,6 +26,7 @@ const SUPER_ADMIN: HardcodedUser = {
   password: 'SuperAdmin123!',
   name: 'Super Admin Developer',
   role: 'global_super_admin',
+  schoolId: undefined, // Super admin = all schools (no specific school)
 };
 
 // 2. DYNAMIC USERS (Stored in localStorage - created by Super Admin)
@@ -162,6 +163,7 @@ export function createUser(userData: Omit<HardcodedUser, 'id'>): HardcodedUser {
     ...userData,
     id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     isActive: userData.isActive ?? true, // Default to active
+    schoolId: userData.schoolId || null, // Use null if no valid school UUID
   };
   
   const dynamicUsers = getDynamicUsers();
