@@ -50,8 +50,8 @@ export function generatePassword(): string {
 
 /**
  * Generate email from username
- * Format: username@perpuspelita.com
+ * Format: username@local.app
  */
 export function generateEmail(username: string): string {
-  return `${username}@perpuspelita.com`;
+  return `${username}@local.app`;
 }

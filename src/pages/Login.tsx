@@ -30,15 +30,18 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      toast.error('Username dan password wajib diisi');
+      toast.error('Username/email dan password wajib diisi');
       return;
     }
+
+    // Auto-convert username ke email @local.app untuk login
+    const loginEmail = email.includes('@') ? email : `${email}@local.app`;
 
     console.time("LOGIN_FLOW");
     setIsLoading(true);
     try {
       // Use the simplified login function from AuthContext
-      const { success, message } = await login(email, password);
+      const { success, message } = await login(loginEmail, password);
 
       if (!success) throw new Error(message || 'Gagal login');
       
@@ -55,7 +58,7 @@ export default function Login() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      toast.error('Email dan password wajib diisi');
+      toast.error('Username dan password wajib diisi');
       return;
     }
 
@@ -64,8 +67,11 @@ export default function Login() {
       const supabase = getSupabase();
       if (!supabase) throw new Error('Koneksi database terputus');
 
+      // Auto-convert username ke email @local.app
+      const signupEmail = email.includes('@') ? email : `${email}@local.app`;
+
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: signupEmail,
         password,
         options: {
           data: {
@@ -160,7 +166,7 @@ export default function Login() {
               {/* Username field */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  Username
+                  Username atau Email
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
@@ -171,11 +177,12 @@ export default function Login() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="block w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all bg-gray-50 focus:bg-white outline-none placeholder:text-gray-400"
-                    placeholder="Masukkan username atau email"
+                    placeholder="contoh: admin (tanpa @local.app)"
                     disabled={isLoading}
                     autoComplete="username"
                   />
                 </div>
+                <p className="text-xs text-gray-400 mt-1">* Username akan otomatis jadi admin@local.app</p>
               </div>
 
               {/* Password field */}

@@ -72,10 +72,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    console.log('Login attempt:', { email });
+    // Auto-convert username ke email @local.app
+    const loginEmail = email.includes('@') ? email : `${email}@local.app`;
+    console.log('Login attempt:', { original: email, converted: loginEmail });
     
     try {
-      const { data, error } = await loginWithEmail(email, password);
+      const { data, error } = await loginWithEmail(loginEmail, password);
       
       if (error) {
         console.error('Login error:', error);
