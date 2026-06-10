@@ -6,7 +6,9 @@ import { loginWithEmail, logoutUser, getCurrentSession, onAuthStateChange, getUs
 // Super Admin hardcoded credentials (bypass database query)
 const SUPER_ADMIN_EMAIL = 'superadmin@perpuspelita.id';
 const SUPER_ADMIN_PASSWORD_HASH = 'SuperAdmin123!'; // Plain text for comparison (in production, use proper hashing)
-const LOCAL_STORAGE_ROLE_KEY = 'perpuspelita_cached_role';
+
+// FIX: Cache per-user (not global) to prevent role mixup
+const getUserCacheKey = (userId: string) => `perpuspelita_role_${userId}`;
 
 export type { AppRole };
 
@@ -39,8 +41,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       appRole: 'global_super_admin' as AppRole,
       schoolId: undefined, // Super admin has access to all schools
     };
-    // Cache role in localStorage
-    localStorage.setItem(LOCAL_STORAGE_ROLE_KEY, 'global_super_admin');
+    // FIX: Cache role per-user (not global)
+    localStorage.setItem(getUserCacheKey(userId), 'global_super_admin');
     return superAdminUser;
   }, []);
 
@@ -62,20 +64,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const { role, schoolId, error } = await getUserRole(session.user.id);
           
           // FIX: Don't default to "siswa" on error - use cached role or null
+          const userId = session.user.id;
           let safeRole: string | null = role;
           if (error || !role) {
-            // Try to get from cache
-            const cachedRole = localStorage.getItem(LOCAL_STORAGE_ROLE_KEY);
+            // Try to get from PER-USER cache (not global)
+            const cachedRole = localStorage.getItem(getUserCacheKey(userId));
             if (cachedRole) {
-              console.warn('getUserRole error, using cached role:', cachedRole);
+              console.warn('getUserRole error, using cached role for user:', userId, cachedRole);
               safeRole = cachedRole;
             } else {
-              console.warn('getUserRole error, no cached role, setting to null');
+              console.warn('getUserRole error, no cached role for user:', userId, 'setting to null');
               safeRole = null;
             }
           } else {
-            // Cache the successful role
-            localStorage.setItem(LOCAL_STORAGE_ROLE_KEY, role);
+            // FIX: Cache the successful role per-user
+            localStorage.setItem(getUserCacheKey(userId), role);
+            console.log('Role cached for user:', userId, role);
           }
           
           const userProfile: User = {
@@ -112,18 +116,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { role, schoolId, error } = await getUserRole(session.user.id);
         
         // FIX: Don't default to "siswa" on error
+        const userId = session.user.id;
         let safeRole: string | null = role;
         if (error || !role) {
-          const cachedRole = localStorage.getItem(LOCAL_STORAGE_ROLE_KEY);
+          // Try to get from PER-USER cache
+          const cachedRole = localStorage.getItem(getUserCacheKey(userId));
           if (cachedRole) {
-            console.warn('getUserRole error on auth change, using cached role:', cachedRole);
+            console.warn('getUserRole error on auth change, using cached role for user:', userId, cachedRole);
             safeRole = cachedRole;
           } else {
-            console.warn('getUserRole error on auth change, no cached role');
+            console.warn('getUserRole error on auth change, no cached role for user:', userId);
             safeRole = null;
           }
         } else {
-          localStorage.setItem(LOCAL_STORAGE_ROLE_KEY, role);
+          // FIX: Cache per-user
+          localStorage.setItem(getUserCacheKey(userId), role);
+          console.log('Role cached for user:', userId, role);
         }
         
         const userProfile: User = {
@@ -136,8 +144,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
         setUser(userProfile);
       } else if (event === 'SIGNED_OUT') {
+        // FIX: Clear only current user's cache (don't affect other users)
+        if (user?.id) {
+          localStorage.removeItem(getUserCacheKey(user.id));
+          console.log('Cleared cache for user:', user.id);
+        }
         setUser(null);
-        localStorage.removeItem(LOCAL_STORAGE_ROLE_KEY);
       }
     });
 
