@@ -82,26 +82,32 @@ export default function Books() {
         
         if (!schoolId) {
           // Fallback to profile lookup
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('school_id')
-            .eq('user_id', user.id)
-            .maybeSingle();
+          // FIX: Wrap in try-catch for hardcoded users (non-UUID IDs)
+          try {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('school_id')
+              .eq('user_id', user.id)
+              .maybeSingle();
 
-          if (profile?.school_id) {
-            schoolId = profile.school_id;
-          } else {
-            // Fallback for global_super_admin - get first school
-            // DEMO USER DETECTION - Skip Supabase for demo users
-            if (user?.email?.endsWith('@demo.local')) {
-              schoolId = 'demo-school';
-            } else {
+            if (profile?.school_id) {
+              schoolId = profile.school_id;
+            }
+          } catch (err) {
+            console.log('Profile lookup failed (expected for hardcoded users):', err);
+          }
+          
+          // If still no schoolId, try to get first school from database
+          if (!schoolId) {
+            try {
               const { data: firstSchool } = await supabase
                 .from('schools')
                 .select('id')
                 .limit(1)
                 .maybeSingle();
               schoolId = firstSchool?.id;
+            } catch (err) {
+              console.log('Schools query failed:', err);
             }
           }
         }
