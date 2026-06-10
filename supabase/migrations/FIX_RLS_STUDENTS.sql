@@ -36,7 +36,8 @@ USING (true);
 -- Step 5: Grant necessary permissions
 GRANT ALL ON public.students TO authenticated;
 GRANT SELECT ON public.students TO anon;
-GRANT USAGE, SELECT ON SEQUENCE public.students_id_seq TO authenticated;
+-- Note: If your students table has an auto-increment ID, uncomment below:
+-- GRANT USAGE, SELECT ON SEQUENCE IF EXISTS public.students_id_seq TO authenticated;
 
 -- =============================================
 -- VERIFICATION QUERIES (Optional - Run to check)
