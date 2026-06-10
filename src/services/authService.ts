@@ -25,11 +25,11 @@ export function onAuthStateChange(callback: (event: string, session: any) => voi
   return supabase.auth.onAuthStateChange(callback);
 }
 
-export async function getUserRole(userId: string, retryCount = 0): Promise<{ role: string; schoolId: string | null; profile: null }> {
+export async function getUserRole(userId: string, retryCount = 0): Promise<{ role: string | null; schoolId: string | null; profile: null; error?: string }> {
   const supabase = getSupabase();
 
   if (!supabase) {
-    return { role: "siswa", schoolId: null, profile: null };
+    return { role: null, schoolId: null, profile: null, error: "Supabase not ready" };
   }
 
   try {
@@ -49,29 +49,31 @@ export async function getUserRole(userId: string, retryCount = 0): Promise<{ rol
 
     if (error) {
       // If timeout and haven't retried max times, retry
-      if (error.message?.includes('timeout') && retryCount < 2) {
+      if ((error.message?.includes('timeout') || error.message?.includes('Timed out')) && retryCount < 2) {
         console.warn(`getUserRole timeout, retrying... (${retryCount + 1}/3)`);
         await new Promise(resolve => setTimeout(resolve, 500));
         return getUserRole(userId, retryCount + 1);
       }
-      return { role: "siswa", schoolId: null, profile: null };
+      // Return null role on error - don't default to "siswa"
+      return { role: null, schoolId: null, profile: null, error: error.message };
     }
 
     return {
-      role: data?.role || "siswa",
+      role: data?.role || null,
       schoolId: data?.school_id || null,
       profile: null
     };
   } catch (err: any) {
     // If timeout and haven't retried max times, retry
-    if (err?.message?.includes('timeout') && retryCount < 2) {
+    if ((err?.message?.includes('timeout') || err?.message?.includes('Timed out')) && retryCount < 2) {
       console.warn(`getUserRole timeout, retrying... (${retryCount + 1}/3)`);
       await new Promise(resolve => setTimeout(resolve, 500));
       return getUserRole(userId, retryCount + 1);
     }
 
     console.error("getUserRole fail:", err);
-    return { role: "siswa", schoolId: null, profile: null };
+    // Return null role on error - don't default to "siswa"
+    return { role: null, schoolId: null, profile: null, error: err?.message || "Unknown error" };
   }
 }
 

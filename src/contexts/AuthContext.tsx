@@ -26,13 +26,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { session } } = await getCurrentSession();
         
         if (session?.user) {
-          const { role, schoolId } = await getUserRole(session.user.id);
+          const { role, schoolId, error } = await getUserRole(session.user.id);
+          
+          // If getUserRole fails, don't default to "siswa" - use a safe fallback or null
+          const safeRole = role || 'siswa';
+          if (error) {
+            console.warn('getUserRole returned error, using role:', safeRole);
+          }
+          
           const userProfile: User = {
             id: session.user.id,
             email: session.user.email || '',
             name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-            role: role as AppRole,
-            appRole: role as AppRole,
+            role: safeRole as AppRole,
+            appRole: safeRole as AppRole,
             schoolId: schoolId || undefined,
           };
           setUser(userProfile);
@@ -51,13 +58,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('Auth state changed:', event, session?.user?.id);
       
       if (event === 'SIGNED_IN' && session?.user) {
-        const { role, schoolId } = await getUserRole(session.user.id);
+        const { role, schoolId, error } = await getUserRole(session.user.id);
+        
+        // If getUserRole fails, don't default to "siswa" - use a safe fallback or null
+        const safeRole = role || 'siswa';
+        if (error) {
+          console.warn('getUserRole returned error on auth change, using role:', safeRole);
+        }
+        
         const userProfile: User = {
           id: session.user.id,
           email: session.user.email || '',
           name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-          role: role as AppRole,
-          appRole: role as AppRole,
+          role: safeRole as AppRole,
+          appRole: safeRole as AppRole,
           schoolId: schoolId || undefined,
         };
         setUser(userProfile);
