@@ -270,7 +270,7 @@ const Students = () => {
           if (!alreadyExists) {
             createUser({
               email: payload.nis, // Use NIS as username/email
-              password: payload.nis, // Use NIS as password too
+              password: `${payload.nis}@pelita`, // Use NIS@pelita as password
               name: payload.name,
               role: 'siswa',
               schoolId: null,

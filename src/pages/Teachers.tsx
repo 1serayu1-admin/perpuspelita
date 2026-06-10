@@ -110,14 +110,14 @@ const Teachers = () => {
 
     try {
       const credentials = teachers.map((teacher, index) => {
-        const email = teacher.nip;
-        const password = teacher.nip;
+        const username = teacher.nip;
+        const password = `${teacher.nip}@pelita`;
 
         return {
           No: index + 1,
           Nama: teacher.name,
           NIP: teacher.nip,
-          Email: email,
+          Username: username,
           Password: password,
           Status: teacher.is_active ? 'Aktif' : 'Nonaktif'
         };
@@ -280,7 +280,7 @@ const Teachers = () => {
           if (!alreadyExists) {
             createUser({
               email: payload.nip, // Use NIP as username/email
-              password: payload.nip, // Use NIP as password too
+              password: `${payload.nip}@pelita`, // Use NIP@pelita as password
               name: payload.name,
               role: 'guru',
               schoolId: null,
