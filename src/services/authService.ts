@@ -33,25 +33,25 @@ export async function getUserRole(userId: string, retryCount = 0): Promise<{ rol
   }
 
   try {
-    // Query with longer timeout (10 seconds) and simpler select
+    // OPTIMIZED: Simpler query without count/exact/head options
     const { data, error } = await Promise.race([
       supabase
         .from("user_roles")
-        .select("role, school_id", { count: 'exact', head: false })
+        .select("role,school_id") // Simplified - no options
         .eq("user_id", userId)
         .limit(1)
         .maybeSingle(),
 
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("timeout")), 10000)
+        setTimeout(() => reject(new Error("timeout")), 5000) // Reduced to 5s
       )
     ]) as any;
 
     if (error) {
-      // If timeout and haven't retried max times, retry
-      if ((error.message?.includes('timeout') || error.message?.includes('Timed out')) && retryCount < 2) {
-        console.warn(`getUserRole timeout, retrying... (${retryCount + 1}/3)`);
-        await new Promise(resolve => setTimeout(resolve, 500));
+      // INCREASED: More retries (5 times) with shorter delay
+      if ((error.message?.includes('timeout') || error.message?.includes('Timed out')) && retryCount < 5) {
+        console.warn(`getUserRole timeout, retrying... (${retryCount + 1}/5)`);
+        await new Promise(resolve => setTimeout(resolve, 200)); // Shorter delay
         return getUserRole(userId, retryCount + 1);
       }
       // Return null role on error - don't default to "siswa"
@@ -64,10 +64,10 @@ export async function getUserRole(userId: string, retryCount = 0): Promise<{ rol
       profile: null
     };
   } catch (err: any) {
-    // If timeout and haven't retried max times, retry
-    if ((err?.message?.includes('timeout') || err?.message?.includes('Timed out')) && retryCount < 2) {
-      console.warn(`getUserRole timeout, retrying... (${retryCount + 1}/3)`);
-      await new Promise(resolve => setTimeout(resolve, 500));
+    // INCREASED: More retries (5 times)
+    if ((err?.message?.includes('timeout') || err?.message?.includes('Timed out')) && retryCount < 5) {
+      console.warn(`getUserRole timeout, retrying... (${retryCount + 1}/5)`);
+      await new Promise(resolve => setTimeout(resolve, 200)); // Shorter delay
       return getUserRole(userId, retryCount + 1);
     }
 
