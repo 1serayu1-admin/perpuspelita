@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getAllUsersList, createUser, deleteUser, updateUser, type HardcodedUser } from '@/services/authService';
+import { getAllUsersList, createUser, deleteUser, updateUser, setUserActiveStatus, type HardcodedUser } from '@/services/authService';
 import { toast } from 'sonner';
-import { Plus, Trash2, Edit2, Users, Shield, UserCircle } from 'lucide-react';
+import { Plus, Trash2, Edit2, Users, Shield, UserCircle, Power, PowerOff } from 'lucide-react';
 import type { AppRole } from '@/lib/types';
 
 const AVAILABLE_ROLES: { value: AppRole; label: string; description: string }[] = [
@@ -82,6 +82,17 @@ export default function UserManagement() {
       } else {
         toast.error('Tidak bisa hapus user ini');
       }
+    }
+  };
+
+  const handleToggleActive = (userId: string, userName: string, currentStatus: boolean) => {
+    const newStatus = !currentStatus;
+    const success = setUserActiveStatus(userId, newStatus);
+    if (success) {
+      toast.success(`Akun "${userName}" ${newStatus ? 'diaktifkan' : 'dinonaktifkan'}`);
+      loadUsers();
+    } else {
+      toast.error('Gagal mengubah status akun');
     }
   };
 
@@ -280,7 +291,14 @@ export default function UserManagement() {
                 <div className="flex items-center gap-3">
                   {getRoleIcon(u.role)}
                   <div>
-                    <p className="font-medium text-gray-900">{u.name}</p>
+                    <p className="font-medium text-gray-900">
+                      {u.name}
+                      {u.isActive === false && (
+                        <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full">
+                          Nonaktif
+                        </span>
+                      )}
+                    </p>
                     <p className="text-sm text-gray-500">
                       {u.email} • {getRoleLabel(u.role)}
                     </p>
@@ -288,6 +306,13 @@ export default function UserManagement() {
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  <button
+                    onClick={() => handleToggleActive(u.id, u.name, u.isActive !== false)}
+                    className={`p-2 rounded-lg ${u.isActive === false ? 'text-green-600 hover:bg-green-50' : 'text-orange-600 hover:bg-orange-50'}`}
+                    title={u.isActive === false ? 'Aktifkan akun' : 'Nonaktifkan akun'}
+                  >
+                    {u.isActive === false ? <Power className="w-4 h-4" /> : <PowerOff className="w-4 h-4" />}
+                  </button>
                   <button
                     onClick={() => startEdit(u)}
                     className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"

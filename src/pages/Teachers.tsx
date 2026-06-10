@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { batchInsertRecords } from '@/lib/batchImport';
+import { createUser } from '@/services/authService';
 import { useBulkSelection } from '@/hooks/useBulkSelection';
 import { toast } from 'sonner';
 import { MemberCard } from '@/components/MemberCard';
@@ -225,8 +226,40 @@ const Teachers = () => {
       onProgress: options?.onProgress,
     });
 
+    // AUTO-CREATE USER ACCOUNTS for each imported teacher
+    // Login: NIP/NIP (gunakan NIP sebagai username & password)
+    let usersCreated = 0;
+    for (const payload of payloads) {
+      if (payload.nip && payload.nip !== '-') {
+        try {
+          // Check if user already exists
+          const existingUsers = JSON.parse(localStorage.getItem('perpuspelita_dynamic_users') || '[]');
+          const alreadyExists = existingUsers.find((u: any) => u.email === payload.nip);
+          
+          if (!alreadyExists) {
+            createUser({
+              email: payload.nip, // Use NIP as username/email
+              password: payload.nip, // Use NIP as password too
+              name: payload.name,
+              role: 'guru',
+              schoolId: user?.schoolId || 'school-001',
+            });
+            usersCreated++;
+          }
+        } catch (err) {
+          console.error('Failed to create user for teacher:', payload.name, err);
+        }
+      }
+    }
+
     await refetch();
-    toast.success(`Import selesai: ${result.success} guru masuk database`);
+    
+    if (usersCreated > 0) {
+      toast.success(`Import selesai! ${result.success} guru masuk database, ${usersCreated} akun login dibuat (NIP/NIP)`);
+    } else {
+      toast.success(`Import selesai: ${result.success} guru masuk database`);
+    }
+    
     return { success: result.success, failed: result.failed + failed };
   };
 

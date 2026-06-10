@@ -12,6 +12,7 @@ export interface HardcodedUser {
   name: string;
   role: AppRole;
   schoolId?: string;
+  isActive?: boolean; // Account status - can be disabled by admin
 }
 
 // ============================================
@@ -59,6 +60,14 @@ export async function loginWithEmail(email: string, password: string) {
     return { 
       error: { message: 'Email atau password salah' }, 
       data: null 
+    };
+  }
+  
+  // Check if account is active (only for non-superadmin)
+  if (user.role !== 'global_super_admin' && user.isActive === false) {
+    return {
+      error: { message: 'Akun Anda dinonaktifkan. Hubungi admin.' },
+      data: null
     };
   }
 
@@ -152,6 +161,7 @@ export function createUser(userData: Omit<HardcodedUser, 'id'>): HardcodedUser {
   const newUser: HardcodedUser = {
     ...userData,
     id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    isActive: userData.isActive ?? true, // Default to active
   };
   
   const dynamicUsers = getDynamicUsers();
@@ -159,6 +169,23 @@ export function createUser(userData: Omit<HardcodedUser, 'id'>): HardcodedUser {
   saveDynamicUsers(dynamicUsers);
   
   return newUser;
+}
+
+// Activate/Deactivate user (Admin function)
+export function setUserActiveStatus(userId: string, isActive: boolean): boolean {
+  if (userId === SUPER_ADMIN.id) {
+    return false; // Cannot deactivate Super Admin
+  }
+  
+  const dynamicUsers = getDynamicUsers();
+  const index = dynamicUsers.findIndex(u => u.id === userId);
+  
+  if (index === -1) return false;
+  
+  dynamicUsers[index].isActive = isActive;
+  saveDynamicUsers(dynamicUsers);
+  
+  return true;
 }
 
 // Delete user (Super Admin only, cannot delete Super Admin)
