@@ -20,7 +20,9 @@ async function fetchAllRows(
         .from(table)
         .select(options?.select || '*');
 
-      if (schoolId) {
+      // Only filter by school_id for non-students tables
+      // Students table should show all data for now
+      if (schoolId && table !== 'students') {
         query = query.eq('school_id', schoolId);
       }
 
@@ -81,7 +83,8 @@ export function useSchoolData<T extends Record<string, any>>(
     setLoading(true);
 
     // Users without a school (and not global admin) should see no data
-    if (!schoolId && !isGlobalAdmin) {
+    // Except for students table - always fetch all students
+    if (!schoolId && !isGlobalAdmin && table !== 'students') {
       setData([]);
       setLoading(false);
       return;
