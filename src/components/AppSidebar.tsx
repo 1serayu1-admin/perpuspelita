@@ -53,7 +53,7 @@ export function AppSidebar() {
     { label: 'Katalog Buku',   icon: BookOpen,        path: '/books',           roles: ['admin', 'school_super_admin', 'guru', 'siswa'] },
     { label: 'Tanya AI',       icon: Sparkles,        path: '/tanya-ai',        roles: ['admin', 'school_super_admin', 'guru', 'siswa'] },
     { label: 'Kategori',       icon: Tag,             path: '/categories',      roles: ['admin', 'school_super_admin'] },
-    { label: 'Peminjaman',     icon: Library,         path: '/borrow-regular',  roles: ['admin', 'school_super_admin'] },
+    { label: 'Peminjaman',     icon: Library,         path: '/borrow-regular',  roles: ['admin', 'school_super_admin', 'guru'] },
     { label: 'Pinjam Pelajaran', icon: BookCopy,      path: '/borrow-lesson',   roles: ['admin', 'school_super_admin', 'guru'] },
     { label: 'Pengembalian',   icon: RotateCcw,       path: '/returns',         roles: ['admin', 'school_super_admin'] },
     { label: 'Persetujuan',    icon: ClipboardCheck,  path: '/approval',        roles: ['admin', 'school_super_admin'] },
