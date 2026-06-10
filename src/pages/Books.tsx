@@ -27,15 +27,18 @@ export default function Books() {
   }, [books, searchTerm]);
 
   const handleDownloadTemplate = () => {
-    const headers = "No,Judul Buku,Penyusun/Pengarang,Penerbit,Jenis Buku,Jumlah,Sumber\n";
-    const sampleRows = [
+    // Simple format (backward compatible)
+    const simpleHeaders = "No,Judul Buku,Penyusun/Pengarang,Penerbit,Jenis Buku,Jumlah,Sumber\n";
+    const simpleSampleRows = [
       "1,Dasar Desain Grafis kelas X,Tim Pengajar,Erlangga,Non Fiksi,20,BOS",
       "2,Matematika untuk SMA Kelas XI,Dr. Ahmad Wijaya,Gramedia,Fiksi,15,Dana BOS",
-      "3,Fisika Dasar,Prof. Budi Santoso,Andi Offset,Non Fiksi,10,Donasi",
-      "4,Bahasa Indonesia Kelas XII,Siti Nurjanah,Yudhistira,Non Fiksi,25,BOS",
-      "5,Sejarah Indonesia,Dr. Muhammad Yusuf,Erlangga,Fiksi,18,Dana BOS"
+      "3,Fisika Dasar,Prof. Budi Santoso,Andi Offset,Non Fiksi,10,Donasi"
     ].join('\n');
-    const csvContent = headers + sampleRows + '\n\n# Catatan:\n# - Kolom "No" opsional (nomor urut)\n# - "Judul Buku" wajib diisi\n# - "Penyusun/Pengarang" bisa diisi "-" jika tidak ada\n# - "Penerbit" bisa diisi "-" jika tidak ada\n# - "Jenis Buku" akan membuat kategori otomatis\n# - "Jumlah" harus berupa angka\n# - "Sumber" bisa diisi: BOS, Donasi, Pembelian, dll';
+    
+    // Inventarisasi format (support untuk file Dapodik/sekolah)
+    const inventarisasiHeader = `\n\n# FORMAT INVENTARISASI (Dapodik/Format Sekolah):\n# Bisa juga upload file dengan kolom:\n# Nomor,Judul Buku,Penyusun/Pengarang,Penerbit,Tahun Terbit,Fiksi,Non Fiksi,Banyak Buku,BOS,DAK,Lainnya\n#\n# Catatan:\n# - "Judul Buku" wajib diisi\n# - "Banyak Buku" adalah jumlah stok\n# - "Fiksi/Non Fiksi" diisi ? atau V untuk menandai jenis buku\n# - "BOS/DAK/Lainnya" untuk sumber dana`;
+    
+    const csvContent = simpleHeaders + simpleSampleRows + inventarisasiHeader;
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
@@ -108,17 +111,33 @@ export default function Books() {
         }
 
         // Process books with proper field mapping
+        // Support both old template format and new inventarisasi format
         const booksToInsert = data.map((row: any) => {
-          const stock = parseInt(row['Jumlah'] || '0') || 0;
-          const categoryType = (row['Jenis Buku'] || 'Non Fiksi').trim();
+          // Try multiple possible column names for each field
+          const stock = parseInt(row['Jumlah'] || row['Banyak Buku'] || row['Banyak'] || '0') || 0;
+          
+          // Determine category type from various possible column names
+          let categoryType = 'Non Fiksi';
+          const jenisVal = row['Jenis Buku'] || row['Fiksi'] || row['Non Fiksi'] || '';
+          if (jenisVal === '?' || jenisVal === 'V' || jenisVal?.toLowerCase().includes('fiksi')) {
+            categoryType = jenisVal.includes('Non') ? 'Non Fiksi' : 'Fiksi';
+          }
+          
+          // Get source (sumber) - BOS, DAK, or Lainnya
+          let source = '-';
+          if (row['BOS'] && row['BOS'] !== '') source = 'BOS';
+          else if (row['DAK'] && row['DAK'] !== '') source = 'DAK';
+          else if (row['Lainnya'] && row['Lainnya'] !== '') source = 'Lainnya';
+          else if (row['Sumber']) source = row['Sumber'];
+          
           return {
             categoryType, // frontend-only, stripped before insert
             // DB-valid fields only below:
             school_id: schoolId,
-            title: (row['Judul Buku'] || 'Tanpa Judul').trim(),
-            author: (row['Penyusun/Pengarang'] || '-').trim(),
+            title: (row['Judul Buku'] || row['Judul'] || 'Tanpa Judul').trim(),
+            author: (row['Penyusun/Pengarang'] || row['Penyusun'] || row['Pengarang'] || '-').trim(),
             publisher: (row['Penerbit'] || '-').trim(),
-            year: new Date().getFullYear(),
+            year: parseInt(row['Tahun Terbit'] || row['Tahun']) || new Date().getFullYear(),
             isbn: '',
             shelf_location: '',
             stock,
