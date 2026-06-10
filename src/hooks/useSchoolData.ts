@@ -20,8 +20,8 @@ async function fetchAllRows(
         .from(table)
         .select(options?.select || '*');
 
-      // Only filter by school_id for specific tables
-      // Students and books tables should show all data if no school_id
+      // FIX: Fetch all data when schoolId is null (no filtering)
+      // Only filter by school_id when schoolId is actually provided
       if (schoolId && table !== 'students' && table !== 'books') {
         query = query.eq('school_id', schoolId);
       }
@@ -82,14 +82,8 @@ export function useSchoolData<T extends Record<string, any>>(
   const fetchData = useCallback(async () => {
     setLoading(true);
 
-    // Users without a school (and not global admin) should see no data
-    // Except for students table - always fetch all students
-    if (!schoolId && !isGlobalAdmin && table !== 'students') {
-      setData([]);
-      setLoading(false);
-      return;
-    }
-
+    // FIX: Fetch all data when schoolId is null (no filtering)
+    // Only filter by school_id when schoolId is actually provided
     const result = await fetchAllRows(table, schoolId, isGlobalAdmin, options);
     setData(result as T[]);
     setLoading(false);
@@ -100,8 +94,7 @@ export function useSchoolData<T extends Record<string, any>>(
   }, [fetchData]);
 
   const insert = async (record: Partial<T>) => {
-    const payload = schoolId ? { ...record, school_id: schoolId } : record;
-    const { error } = await (supabase as any).from(table).insert(payload);
+    const { error } = await (supabase as any).from(table).insert(record);
     if (!error) await fetchData();
     return { error };
   };
