@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/layouts/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
-import { createUser } from '@/services/auth';
+import { createSupabaseUser } from '@/services/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -49,7 +49,7 @@ export default function CreateUser() {
     setError('');
     setLoading(true);
 
-    const result = await createUser({
+    const result = await createSupabaseUser({
       email: formData.email,
       password: formData.password,
       name: formData.name,

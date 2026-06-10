@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 
-export const createUser = async ({
+export const createSupabaseUser = async ({
   email,
   password,
   name,
