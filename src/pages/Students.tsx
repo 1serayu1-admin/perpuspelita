@@ -177,7 +177,7 @@ const Students = () => {
       }
 
       const classItem = resolveClass(row);
-      const email = String(row['email'] || '').trim() || `${toEmailLocalPart(nis || name)}@dummy.local`;
+      const email = String(row['email'] || '').trim() || `${toEmailLocalPart(nis || name)}@local.app`;
 
       result.push({
         name,
