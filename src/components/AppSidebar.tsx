@@ -49,10 +49,10 @@ export function AppSidebar() {
 
   // ADMIN PERPUSTAKAAN - Operational Library Menu
   const adminMenu: MenuItem[] = [
-    { label: 'Dashboard',      icon: LayoutDashboard, path: '/dashboard',       roles: ['admin', 'school_super_admin'] },
+    { label: 'Dashboard',      icon: LayoutDashboard, path: '/dashboard',       roles: ['admin', 'school_super_admin', 'guru'] },
     { label: 'Katalog Buku',   icon: BookOpen,        path: '/books',           roles: ['admin', 'school_super_admin', 'guru', 'siswa'] },
     { label: 'Tanya AI',       icon: Sparkles,        path: '/tanya-ai',        roles: ['admin', 'school_super_admin', 'guru', 'siswa'] },
-    { label: 'Kategori',       icon: Tag,             path: '/categories',      roles: ['admin', 'school_super_admin', 'guru'] },
+    { label: 'Kategori',       icon: Tag,             path: '/categories',      roles: ['admin', 'school_super_admin'] },
     { label: 'Peminjaman',     icon: Library,         path: '/borrow-regular',  roles: ['admin', 'school_super_admin'] },
     { label: 'Pinjam Pelajaran', icon: BookCopy,      path: '/borrow-lesson',   roles: ['admin', 'school_super_admin', 'guru'] },
     { label: 'Pengembalian',   icon: RotateCcw,       path: '/returns',         roles: ['admin', 'school_super_admin'] },
@@ -61,7 +61,7 @@ export function AppSidebar() {
     { label: 'Data Siswa',     icon: GraduationCap,   path: '/students',        roles: ['admin', 'school_super_admin'] },
     { label: 'Data Guru',      icon: Users,           path: '/teachers',        roles: ['admin', 'school_super_admin'] },
     { label: 'Laporan',        icon: FileBarChart,    path: '/reports',         roles: ['admin', 'school_super_admin'] },
-    { label: 'Pengaturan',     icon: SettingsIcon,    path: '/settings',        roles: ['admin', 'school_super_admin', 'guru'] },
+    { label: 'Pengaturan',     icon: SettingsIcon,    path: '/settings',        roles: ['admin', 'school_super_admin'] },
   ];
 
   // Combine menus based on role
