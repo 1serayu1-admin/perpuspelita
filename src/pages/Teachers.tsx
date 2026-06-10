@@ -513,13 +513,12 @@ const Teachers = () => {
           columns={[
             { key: 'id', label: 'ID', sample: '1' },
             { key: 'nip', label: 'NIP/NIK', required: true, aliases: ['nik', 'NIK', 'No', 'NO'], sample: '2001' },
-            { key: 'name', label: 'Name/Nama', required: true, aliases: ['nama', 'Nama', 'NAMA'], sample: 'Guru 1' },
-            { key: 'subject', label: 'Subject', aliases: ['mata_pelajaran', 'mata pelajaran', 'Subject', 'SUBJECT'], sample: '-' },
-            { key: 'status', label: 'Status', sample: 'active' },
-            { key: 'email', label: 'Email', sample: 'guru2001@dummy.local' },
+            { key: 'name', label: 'Name/Nama', required: true, aliases: ['nama', 'Nama', 'NAMA'] },
+            { key: 'subject', label: 'Subject', aliases: ['mata_pelajaran', 'mata pelajaran', 'Subject', 'SUBJECT'] },
+            { key: 'status', label: 'Status' },
           ]}
           onImport={handleCsvImport}
-          templateFilename="template-guru.csv"
+          templateFilename="template-import-guru.csv"
         />
       </div>
     </AppLayout>

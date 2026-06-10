@@ -545,11 +545,10 @@ const Students = () => {
           columns={[
             { key: 'id', label: 'ID', sample: '1' },
             { key: 'nis', label: 'NIS', required: true, sample: '1001' },
-            { key: 'name', label: 'Name', required: true, aliases: ['nama'], sample: 'Siswa 1' },
+            { key: 'name', label: 'Name', required: true, aliases: ['nama'] },
             { key: 'class_id', label: 'Class ID', aliases: ['kelas_id', 'class id'], sample: '1' },
-            { key: 'gender', label: 'Gender', sample: 'L' },
-            { key: 'status', label: 'Status', sample: 'active' },
-            { key: 'email', label: 'Email', sample: 'siswa1001@dummy.local' },
+            { key: 'gender', label: 'Gender' },
+            { key: 'status', label: 'Status' },
           ]}
           onImport={handleCsvImport}
           templateFilename="template-siswa.csv"

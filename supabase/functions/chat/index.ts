@@ -12,45 +12,60 @@ serve(async (req) => {
   }
 
   try {
+    const { messages, context, userId: hardcodedUserId } = await req.json();
+    
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      throw new Error("Missing Authorization header");
-    }
+    let userId: string | null = null;
+    let remainingQuota: number | null = null;
+    
+    // Try Supabase auth first
+    if (authHeader) {
+      const supabaseClient = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+        {
+          global: { headers: { Authorization: authHeader } },
+        }
+      );
 
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: { headers: { Authorization: authHeader } },
+      // Get user
+      const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+      if (user && !userError) {
+        userId = user.id;
+        
+        // Call RPC to decrement quota for Supabase users
+        const { data: rpcData, error: rpcError } = await supabaseClient.rpc("decrement_ai_quota", {
+          p_user_id: userId,
+        });
+
+        if (rpcError) {
+          console.error("RPC Error:", rpcError);
+          throw new Error("Error checking quota");
+        }
+
+        const rpcResult = rpcData as any;
+        if (!rpcResult.success) {
+          return new Response(JSON.stringify({ error: rpcResult.error }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        remainingQuota = rpcResult.remaining;
       }
-    );
-
-    // Get user
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) {
+    }
+    
+    // Fallback to hardcoded user ID if no Supabase user
+    if (!userId && hardcodedUserId) {
+      userId = hardcodedUserId;
+      // Hardcoded users get unlimited quota (or fixed high quota)
+      remainingQuota = 999999;
+    }
+    
+    if (!userId) {
       throw new Error("Unauthorized");
     }
 
-    // Call RPC to decrement quota
-    const { data: rpcData, error: rpcError } = await supabaseClient.rpc("decrement_ai_quota", {
-      p_user_id: user.id,
-    });
-
-    if (rpcError) {
-      console.error("RPC Error:", rpcError);
-      throw new Error("Error checking quota");
-    }
-
-    const rpcResult = rpcData as any;
-    if (!rpcResult.success) {
-      return new Response(JSON.stringify({ error: rpcResult.error }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     // Call Gemini API
-    const { messages, context } = await req.json();
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
     if (!GEMINI_API_KEY) {
@@ -84,7 +99,7 @@ serve(async (req) => {
     const data = await response.json();
     const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Maaf, saya tidak bisa memproses permintaan Anda saat ini.";
 
-    return new Response(JSON.stringify({ reply: replyText, remainingQuota: rpcResult.remaining }), {
+    return new Response(JSON.stringify({ reply: replyText, remainingQuota }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 

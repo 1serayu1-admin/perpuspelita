@@ -121,12 +121,7 @@ export function CsvImportDialog({ open, onOpenChange, title, columns, onImport, 
 
   const downloadTemplate = () => {
     const header = columns.map(c => c.label).join(',');
-    const sampleData: Record<string, string> = {
-      'nama': 'Ahmad Fauzi', 'nis': '12345', 'nip': '198501012010',
-      'kelas': 'X-A', 'email': 'contoh@email.com',
-      'mata pelajaran': 'Matematika',
-    };
-    const sample = columns.map(c => c.sample || sampleData[c.key] || c.label).join(',');
+    const sample = columns.map(c => c.sample || '').join(',');
     const csv = `${header}\n${sample}`;
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);

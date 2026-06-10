@@ -181,12 +181,12 @@ const Classes = () => {
           title="Import Kelas dari CSV"
           columns={[
             { key: 'id', label: 'ID', sample: '1' },
-            { key: 'name', label: 'Name', required: true, sample: 'Kelas 1' },
+            { key: 'name', label: 'Name', required: true },
             { key: 'major', label: 'Major', required: true, sample: 'IPA' },
-            { key: 'homeroom_teacher', label: 'Homeroom Teacher', required: true, aliases: ['wali_kelas', 'homeroomTeacher'], sample: 'Guru 1' },
+            { key: 'homeroom_teacher', label: 'Homeroom Teacher', required: true, aliases: ['wali_kelas', 'homeroomTeacher'] },
           ]}
           onImport={handleCsvImport}
-          templateFilename="template-kelas-dummy.csv"
+          templateFilename="template-kelas.csv"
         />
       </div>
     </AppLayout>
