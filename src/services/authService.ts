@@ -25,52 +25,53 @@ export function onAuthStateChange(callback: (event: string, session: any) => voi
   return supabase.auth.onAuthStateChange(callback);
 }
 
-export async function getUserRole(userId: string) {
+export async function getUserRole(userId: string, retryCount = 0): Promise<{ role: string; schoolId: string | null; profile: null }> {
   const supabase = getSupabase();
 
   if (!supabase) {
-    return {
-      role: "siswa",
-      schoolId: null,
-      profile: null
-    };
+    return { role: "siswa", schoolId: null, profile: null };
   }
 
   try {
-    // Ambil role dan school_id (penting untuk school scope)
+    // Query with longer timeout (5 seconds) and limit 1 for faster response
     const { data, error } = await Promise.race([
       supabase
         .from("user_roles")
         .select("role, school_id")
         .eq("user_id", userId)
-        .maybeSingle(),
+        .limit(1)
+        .single(),
 
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("timeout")), 2500)
+        setTimeout(() => reject(new Error("timeout")), 5000)
       )
     ]) as any;
 
-    if (error || !data) {
-      return {
-        role: "siswa",
-        schoolId: null,
-        profile: null
-      };
+    if (error) {
+      // If timeout and haven't retried max times, retry
+      if (error.message?.includes('timeout') && retryCount < 2) {
+        console.warn(`getUserRole timeout, retrying... (${retryCount + 1}/3)`);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return getUserRole(userId, retryCount + 1);
+      }
+      return { role: "siswa", schoolId: null, profile: null };
     }
 
     return {
-      role: data.role || "siswa",
-      schoolId: data.school_id || null,
+      role: data?.role || "siswa",
+      schoolId: data?.school_id || null,
       profile: null
     };
-  } catch (err) {
-    console.error("getUserRole fail:", err);
+  } catch (err: any) {
+    // If timeout and haven't retried max times, retry
+    if (err?.message?.includes('timeout') && retryCount < 2) {
+      console.warn(`getUserRole timeout, retrying... (${retryCount + 1}/3)`);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return getUserRole(userId, retryCount + 1);
+    }
 
-    return {
-      role: "siswa",
-      schoolId: null,
-      profile: null
-    };
+    console.error("getUserRole fail:", err);
+    return { role: "siswa", schoolId: null, profile: null };
   }
 }
 
