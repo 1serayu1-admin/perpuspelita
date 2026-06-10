@@ -185,7 +185,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, message: error.message };
       }
 
-      // Session will be restored by onAuthStateChange
+      // FIX: Immediately set user state after successful login (not waiting for onAuthStateChange)
+      if (data?.session?.user) {
+        const sessionUser = data.session.user;
+        // Get full user details from localStorage
+        const userStr = localStorage.getItem('perpuspelita_user');
+        if (userStr) {
+          const fullUser = JSON.parse(userStr);
+          const userProfile: User = {
+            id: fullUser.id,
+            email: fullUser.email,
+            name: fullUser.name,
+            role: fullUser.role as AppRole,
+            appRole: fullUser.role as AppRole,
+            schoolId: fullUser.schoolId || undefined,
+          };
+          setUser(userProfile);
+          console.log('User state set immediately after login:', userProfile);
+        }
+      }
+
       toast.success('Login berhasil!');
       return { success: true };
     } catch (err: any) {
