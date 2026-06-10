@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolData } from '@/hooks/useSchoolData';
-import { Search, Plus, Edit, Trash2, CreditCard, CalendarDays, Upload } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, CreditCard, CalendarDays, Upload, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { CsvImportDialog } from '@/components/CsvImportDialog';
@@ -20,6 +20,9 @@ import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { generateUsername, generatePassword, generateEmail } from '@/lib/studentCredentials';
+import { supabase } from '@/integrations/supabase/client';
+import * as XLSX from 'xlsx';
 
 interface DbStudent {
   id: string;
@@ -199,6 +202,41 @@ const Students = () => {
     return { success: result.success, failed: result.failed + failed };
   };
 
+  const handleExportCredentials = async () => {
+    if (students.length === 0) {
+      toast.error('Tidak ada data siswa untuk diexport');
+      return;
+    }
+
+    try {
+      const credentials = students.map(student => {
+        const className = getClassName(student.class_id);
+        const username = generateUsername(student.name, className);
+        const password = generatePassword();
+        const email = generateEmail(username);
+        
+        return {
+          'Nama': student.name,
+          'NIS': student.nis,
+          'Kelas': className,
+          'Username': username,
+          'Password': password,
+          'Email': email,
+        };
+      });
+
+      const ws = XLSX.utils.json_to_sheet(credentials);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Credentials');
+      XLSX.writeFile(wb, 'siswa_credentials.xlsx');
+      
+      toast.success('Credentials berhasil diexport');
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Gagal export credentials');
+    }
+  };
+
   return (
     <AppLayout>
       <div className="animate-fade-in space-y-4">
@@ -207,6 +245,9 @@ const Students = () => {
           <div className="flex gap-2">
             <Button size="sm" variant="outline" onClick={() => setCsvOpen(true)}>
               <Upload className="w-4 h-4 mr-1" /> Import CSV
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleExportCredentials}>
+              <Download className="w-4 h-4 mr-1" /> Export Credentials
             </Button>
             <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditItem(null); }}>
               <DialogTrigger asChild><Button size="sm" variant="gradient"><Plus className="w-4 h-4 mr-1" /> Tambah Siswa</Button></DialogTrigger>
