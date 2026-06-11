@@ -1,8 +1,10 @@
 import type { AppRole } from '@/lib/types';
+import { getSupabase } from '@/integrations/supabase/client';
 
 // ============================================
-// HARDCODED USERS - No database query for auth
-// This eliminates all timeout issues!
+// HYBRID AUTH - Supabase Auth + localStorage Fallback
+// Supports cross-device login via Supabase Auth
+// Fallback to localStorage for offline/resilience
 // ============================================
 
 export interface HardcodedUser {
@@ -85,12 +87,46 @@ function getAllUsers(): HardcodedUser[] {
 // ============================================
 
 export async function loginWithEmail(email: string, password: string) {
-  // Find user in ALL users (Super Admin + Dynamic) - case insensitive
-  // Support both: "user@local.app" and "user" (without domain)
   const searchEmail = email.toLowerCase();
   const searchEmailWithoutDomain = searchEmail.replace(/@local\.app$/, '');
   
-  // Debug: Log all users for troubleshooting
+  // STEP 1: Try Supabase Auth first (for cross-device login)
+  try {
+    const supabase = getSupabase();
+    if (supabase) {
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: searchEmail,
+        password: password,
+      });
+      
+      if (!authError && authData.user) {
+        // Get user metadata from Supabase Auth
+        const userMetadata = authData.user.user_metadata;
+        
+        return {
+          error: null,
+          data: {
+            session: {
+              user: {
+                id: authData.user.id,
+                email: authData.user.email || searchEmail,
+                user_metadata: {
+                  name: userMetadata?.name || '',
+                  role: userMetadata?.role || 'siswa',
+                },
+              },
+            },
+          },
+        };
+      }
+      // If auth fails, continue to localStorage fallback
+      console.log('[loginWithEmail] Supabase Auth failed, trying localStorage:', authError?.message);
+    }
+  } catch (e) {
+    console.log('[loginWithEmail] Supabase Auth error:', e);
+  }
+  
+  // STEP 2: Fallback to localStorage (for existing hardcoded users)
   const allUsers = getAllUsers();
   console.log('Login debug - Searching for:', searchEmail);
   console.log('All users count:', allUsers.length);
@@ -99,13 +135,9 @@ export async function loginWithEmail(email: string, password: string) {
   const user = allUsers.find(
     u => {
       const userEmail = u.email.toLowerCase();
-      // Match: exact email, or email without domain, or user stored without domain
       const emailMatches = (userEmail === searchEmail || userEmail === searchEmailWithoutDomain);
-      
-      // Support both password formats: with @pelita (new) and without (old)
       const passwordWithoutSuffix = password.replace(/@pelita$/, '');
       const passwordMatches = (u.password === password || u.password === passwordWithoutSuffix || u.email === password || u.email === passwordWithoutSuffix);
-      
       return emailMatches && passwordMatches;
     }
   );
@@ -125,7 +157,7 @@ export async function loginWithEmail(email: string, password: string) {
     };
   }
 
-  // Create mock session (no Supabase needed!)
+  // Create mock session (for hardcoded users)
   const mockSession = {
     user: {
       id: user.id,
@@ -210,8 +242,8 @@ export function getAllUsersList(): HardcodedUser[] {
   return getAllUsers();
 }
 
-// Create new user (Super Admin only)
-export function createUser(userData: Omit<HardcodedUser, 'id'>): HardcodedUser {
+// Create new user (Super Admin only) - Hybrid: Supabase Auth + localStorage
+export async function createUser(userData: Omit<HardcodedUser, 'id'>): Promise<HardcodedUser> {
   const newUser: HardcodedUser = {
     ...userData,
     id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -219,6 +251,37 @@ export function createUser(userData: Omit<HardcodedUser, 'id'>): HardcodedUser {
     schoolId: userData.schoolId || null, // Use null if no valid school UUID
   };
   
+  // Try to create Supabase Auth user (for cross-device login)
+  try {
+    const supabase = getSupabase();
+    if (supabase) {
+      // Create auth user with email confirmation disabled (auto-confirm)
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          data: {
+            name: userData.name,
+            role: userData.role,
+          },
+        },
+      });
+      
+      if (!authError && authData.user) {
+        // Update the user ID to match Supabase Auth UUID
+        newUser.id = authData.user.id;
+        console.log('[createUser] Supabase Auth user created:', authData.user.id);
+      } else if (authError) {
+        // If user already exists in Auth, continue with local storage
+        console.log('[createUser] Supabase Auth warning:', authError.message);
+      }
+    }
+  } catch (e) {
+    // Silent fail - localStorage backup is enough
+    console.log('[createUser] Supabase Auth failed, using localStorage only:', e);
+  }
+  
+  // Always save to localStorage as backup/fallback
   const dynamicUsers = getDynamicUsers();
   dynamicUsers.push(newUser);
   saveDynamicUsers(dynamicUsers);

@@ -268,7 +268,7 @@ const Students = () => {
           const alreadyExists = existingUsers.find((u: any) => u.email === payload.nis);
           
           if (!alreadyExists) {
-            createUser({
+            await createUser({
               email: payload.nis, // Use NIS as username/email
               password: `${payload.nis}@pelita`, // Use NIS@pelita as password
               name: payload.name,

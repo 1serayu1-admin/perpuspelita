@@ -278,7 +278,7 @@ const Teachers = () => {
           const alreadyExists = existingUsers.find((u: any) => u.email === payload.nip);
           
           if (!alreadyExists) {
-            createUser({
+            await createUser({
               email: payload.nip, // Use NIP as username/email
               password: `${payload.nip}@pelita`, // Use NIP@pelita as password
               name: payload.name,
