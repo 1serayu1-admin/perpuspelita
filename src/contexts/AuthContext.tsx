@@ -201,7 +201,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             schoolId: fullUser.schoolId || undefined,
           };
           setUser(userProfile);
-          console.log('User state set immediately after login:', userProfile);
+          console.log('User state set immediately after login (localStorage):', userProfile);
+        } else {
+          // User from Supabase Auth (no localStorage data yet)
+          const userProfile: User = {
+            id: sessionUser.id,
+            email: sessionUser.email || '',
+            name: sessionUser.user_metadata?.name || '',
+            role: (sessionUser.user_metadata?.role as AppRole) || 'siswa',
+            appRole: (sessionUser.user_metadata?.role as AppRole) || 'siswa',
+            schoolId: undefined,
+          };
+          setUser(userProfile);
+          console.log('User state set immediately after login (Supabase Auth):', userProfile);
         }
       }
 
