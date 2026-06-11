@@ -170,6 +170,13 @@ export async function loginWithEmail(email: string, password: string) {
   localStorage.setItem('perpuspelita_session', JSON.stringify(mockSession));
   localStorage.setItem('perpuspelita_user', JSON.stringify(user));
 
+  // Auto-sync to Supabase Auth (background, non-blocking)
+  syncUserToSupabase(user).then(() => {
+    console.log('[loginWithEmail] User synced to Supabase Auth');
+  }).catch(() => {
+    // Silent fail - user can still login on this device
+  });
+
   return { 
     error: null, 
     data: { session: mockSession } 
@@ -179,6 +186,61 @@ export async function loginWithEmail(email: string, password: string) {
 export async function logoutUser() {
   localStorage.removeItem('perpuspelita_session');
   localStorage.removeItem('perpuspelita_user');
+}
+
+// Auto-sync localStorage user to Supabase Auth (background migration)
+export async function syncUserToSupabase(user: HardcodedUser): Promise<void> {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) return;
+    
+    // Check if user already exists in Supabase Auth
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: user.password,
+    });
+    
+    if (!signInError && signInData.user) {
+      // User already exists in Supabase Auth, update ID to match
+      if (user.id !== signInData.user.id) {
+        const dynamicUsers = getDynamicUsers();
+        const userIndex = dynamicUsers.findIndex(u => u.email === user.email);
+        if (userIndex >= 0) {
+          dynamicUsers[userIndex].id = signInData.user.id;
+          saveDynamicUsers(dynamicUsers);
+          console.log('[syncUserToSupabase] Updated user ID to match Supabase:', signInData.user.id);
+        }
+      }
+      return;
+    }
+    
+    // User doesn't exist in Supabase Auth, create it
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email: user.email,
+      password: user.password,
+      options: {
+        data: {
+          name: user.name,
+          role: user.role,
+        },
+      },
+    });
+    
+    if (!signUpError && signUpData.user) {
+      // Update localStorage user ID to match Supabase Auth
+      const dynamicUsers = getDynamicUsers();
+      const userIndex = dynamicUsers.findIndex(u => u.email === user.email);
+      if (userIndex >= 0) {
+        dynamicUsers[userIndex].id = signUpData.user.id;
+        saveDynamicUsers(dynamicUsers);
+        console.log('[syncUserToSupabase] Created Supabase Auth user:', signUpData.user.id);
+      }
+    } else {
+      console.log('[syncUserToSupabase] Sign up error:', signUpError?.message);
+    }
+  } catch (e) {
+    console.log('[syncUserToSupabase] Error:', e);
+  }
 }
 
 export async function getCurrentSession() {
