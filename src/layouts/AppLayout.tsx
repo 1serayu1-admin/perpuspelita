@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { AppSidebar } from '@/components/AppSidebar';
+import { AppSidebar, MobileSidebar } from '@/components/AppSidebar';
 import { Bell, Search } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -19,10 +19,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
         <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
           {/* Top Navbar */}
-          <header className="h-16 sticky top-0 z-30 flex items-center justify-between px-6 bg-white/80 backdrop-blur-md border-b border-gray-100/80 shadow-sm">
-            {/* Search */}
-            <div className="flex-1 max-w-sm">
-              <div className="relative group">
+          <header className="h-16 sticky top-0 z-30 flex items-center justify-between px-4 md:px-6 bg-white/80 backdrop-blur-md border-b border-gray-100/80 shadow-sm">
+            {/* Left: Mobile Menu + Search */}
+            <div className="flex items-center gap-2 flex-1 max-w-sm">
+              <MobileSidebar />
+              <div className="relative group flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-primary transition-colors" />
                 <input
                   type="text"
